@@ -45,3 +45,5 @@ sous un numéro de version plus grand (les numéros ne reculent jamais).
 ## État
 Phase P2 (logique du lanceur) : faite, 27 tests. À venir : P3 fabrication Windows (PyInstaller onedir + Inno Setup
 via GitHub Actions), P4 canal, P5 pilote. Prérequis côté exercice : `docs/adaptation_exercice.md`.
+
+## Clés : `outils/Creer_cles_NVS.bat` (double-clic, Windows) crée principale + secours et affiche les clés publiques.

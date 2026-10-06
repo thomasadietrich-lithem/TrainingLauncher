@@ -4,7 +4,9 @@
 Thomas). Rétro-compatible : lancé à la main (`python …py`), l'exercice se comporte exactement comme avant.
 Repères de lignes : version lot 3 (403 912 o, 06/10).
 
-## (a) CRITIQUE — dossier de données fourni par le lanceur (l. 268)
+## (a) CRITIQUE — dossier de données fourni par le lanceur (l. 268) — ✅ FAIT le 06/10 (404 062 o)
+Appliquée seule, à la demande de Thomas ; 295/295 tests de l'exercice OK avant et après ; vérifié que les 8 fichiers
+de `config/` suivent `NVS_DATA_DIR` et que sans la variable rien ne change. (b) et (c) : NON faits (en attente).
 ```python
 # avant
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
