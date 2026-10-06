@@ -1,4 +1,7 @@
 {
-  "note": "Clés publiques Ed25519 de confiance (principale + secours). Remplies par outils/generer_cles.py. Les clés PRIVÉES ne vont jamais dans ce dépôt ni sur AWS.",
-  "cles": {}
+  "note": "Clés publiques Ed25519 de confiance, créées par Thomas le 06/10/2026 (Creer_cles_NVS.html). principale = publication (secret GitHub NVS_CLE_PRIVEE) ; secours = hors ligne. Les clés PRIVÉES ne vont jamais dans ce dépôt ni sur AWS.",
+  "cles": {
+    "principale": "5EwK5aPSViO7IzdZgV0ZozoiCQHqkaTacqh3cjBxwtA=",
+    "secours": "Uu5ZVLu1/MWEEynPytm6xkVwk50T4TT70LRfWrrK804="
+  }
 }
