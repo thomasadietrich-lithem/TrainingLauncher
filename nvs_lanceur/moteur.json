@@ -1,6 +1,6 @@
 {
   "moteur": 1,
-  "description": "Bibliothèques figées dans le lanceur (PsychoPy 2024.2.4, Python 3.10). Un exercice ne peut importer que la bibliothèque standard et les modules listés dans modules_autorises (un module autorise aussi ses sous-modules ; « from psychopy import visual » est contrôlé comme psychopy.visual). Toute nouvelle dépendance => moteur + 1 => nouvel installeur.",
+  "description": "Bibliothèques figées dans le lanceur (PsychoPy 2025.1.1, Python 3.10). Un exercice ne peut importer que la bibliothèque standard et les modules listés dans modules_autorises (un module autorise aussi ses sous-modules ; « from psychopy import visual » est contrôlé comme psychopy.visual). Toute nouvelle dépendance => moteur + 1 => nouvel installeur.",
   "modules_autorises": [
     "psychopy.core", "psychopy.event", "psychopy.gui", "psychopy.monitors", "psychopy.sound", "psychopy.visual",
     "psychopy.hardware", "psychopy.tools", "psychopy.logging", "psychopy.clock", "psychopy.constants",

@@ -1,5 +1,5 @@
 # Moteur 1 — dépendances d'exécution figées dans NeuroVision.exe (Windows x64, Python 3.10).
-# PsychoPy 2024.2.4 est installé SANS ses dépendances (--no-deps, voir le workflow) : la liste complète de PsychoPy
+# PsychoPy 2025.1.1 (= version du labo, PC Lenovo de Thomas) est installé SANS ses dépendances (--no-deps, voir le workflow) : la liste complète de PsychoPy
 # tire l'éditeur Builder, wxPython, pandas, gevent… inutiles à un exercice. On n'installe ici que ce dont ont besoin
 # psychopy.core/event/gui/monitors/sound/visual/hardware. L'auto-test de l'exécutable gelé vérifie chaque module.
 # TODO : figer avec empreintes (pip-compile --generate-hashes) une fois la liste stabilisée.
