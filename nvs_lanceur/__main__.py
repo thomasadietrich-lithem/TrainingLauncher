@@ -2,7 +2,8 @@
 
   (sans argument)        démarrage normal patient
   --executer <entree>    processus enfant : exécute un exercice (usage interne)
-  --auto-test            vérification de fabrication (CI) : modules du moteur importables, clés lisibles
+  --auto-test [fichier]  vérification de fabrication (CI) : modules du moteur importables, clés lisibles
+                         (résultat aussi écrit dans <fichier> : l'exécutable gelé n'a pas de console)
   --version              affiche version du lanceur et moteur
 """
 
@@ -14,7 +15,7 @@ import os
 import sys
 
 
-def _auto_test() -> int:
+def _auto_test(sortie=None) -> int:
     from . import MOTEUR, VERSION
     from .config import _dossier_ressources, charger_cles_publiques
     erreurs = []
@@ -36,10 +37,19 @@ def _auto_test() -> int:
                 erreurs.append(f"import {mod} : {exc.__class__.__name__}: {exc}")
     except OSError as exc:
         erreurs.append(f"moteur.json : {exc}")
-    print(f"lanceur {VERSION}, moteur {MOTEUR}")
-    for e in erreurs:
-        print("ÉCHEC", e)
-    print("AUTO-TEST", "OK" if not erreurs else "ÉCHEC")
+    lignes = [f"lanceur {VERSION}, moteur {MOTEUR}, python {sys.version.split()[0]}"]
+    try:
+        import psychopy
+        lignes.append(f"psychopy {psychopy.__version__}")
+    except Exception:
+        pass
+    lignes += [f"ÉCHEC {e}" for e in erreurs]
+    lignes.append("AUTO-TEST " + ("OK" if not erreurs else "ÉCHEC"))
+    if sys.stdout is not None:
+        print("\n".join(lignes))
+    if sortie:
+        with open(sortie, "w", encoding="utf-8") as f:
+            f.write("\n".join(lignes) + "\n")
     return 0 if not erreurs else 1
 
 
@@ -49,7 +59,7 @@ def main(argv=None) -> int:
         from .execution import executer_dans_ce_processus
         return executer_dans_ce_processus(argv[1])
     if argv[:1] == ["--auto-test"]:
-        return _auto_test()
+        return _auto_test(argv[1] if len(argv) > 1 else None)
     if argv[:1] == ["--version"]:
         from . import MOTEUR, VERSION
         print(f"{VERSION} (moteur {MOTEUR})")

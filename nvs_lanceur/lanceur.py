@@ -19,7 +19,8 @@ from typing import Callable, List, Optional, Tuple
 from . import MOTEUR, VERSION
 from .config import TAILLE_MAX_FICHIER, TAILLE_MAX_INSTALLEUR, TAILLE_MAX_MANIFESTE, Reglages
 from .depot import Depot
-from .execution import Resultat, echec_au_demarrage, lancer
+from .execution import Resultat, echec_au_demarrage
+from . import execution
 from .interface import Interface
 from .manifeste import Exercice, Manifeste, ManifesteInvalide, lire_manifeste, version_tuple
 from . import reseau
@@ -65,12 +66,13 @@ def lancer_installeur(chemin: str) -> None:  # pragma: no cover - Windows unique
 
 class Lanceur:
     def __init__(self, reglages: Reglages, interface: Interface,
-                 executer: Callable[[str, str, str, str], Resultat] = lancer,
+                 executer: Optional[Callable[[str, str, str, str], Resultat]] = None,
                  installer_lanceur: Callable[[str], None] = lancer_installeur,
                  verifier_authenticode: Callable[[str], bool] = signature_authenticode_valide):
         self.r = reglages
         self.ui = interface
-        self.executer = executer
+        self.executer = executer or (lambda entree, donnees, eid, v: execution.lancer(
+            entree, donnees, eid, v, journal_enfant=reglages.fichier_journal_enfant))
         self.installer_lanceur = installer_lanceur
         self.verifier_authenticode = verifier_authenticode
         self.depot = Depot(reglages)

@@ -20,34 +20,46 @@ MOTEUR_JSON = os.path.join(ICI, "..", "nvs_lanceur", "moteur.json")
 
 def modules_autorises(moteur_json: str = MOTEUR_JSON) -> Set[str]:
     with open(moteur_json, encoding="utf-8") as f:
-        m = json.load(f)
-    return set(m["modules_autorises"]) | set(sys.stdlib_module_names) | {"__future__"}
+        return set(json.load(f)["modules_autorises"])
 
 
-def imports_de_premier_niveau(source: str) -> Set[str]:
+def imports(source: str) -> Set[str]:
+    """Noms complets importés : « import a.b » → a.b ; « from psychopy import visual » → psychopy.visual."""
     noms: Set[str] = set()
     for noeud in ast.walk(ast.parse(source)):
         if isinstance(noeud, ast.Import):
-            noms.update(a.name.split(".")[0] for a in noeud.names)
+            noms.update(a.name for a in noeud.names)
         elif isinstance(noeud, ast.ImportFrom) and noeud.level == 0 and noeud.module:
-            noms.add(noeud.module.split(".")[0])
+            if noeud.module in ("psychopy",):          # paquet « parapluie » : on contrôle chaque sous-module
+                noms.update(f"psychopy.{a.name}" for a in noeud.names)
+            else:
+                noms.add(noeud.module)
     return noms
+
+
+def _autorise(nom: str, autorises: Set[str], locaux: Set[str]) -> bool:
+    racine = nom.split(".")[0]
+    if racine in sys.stdlib_module_names or racine == "__future__" or racine in locaux:
+        return True
+    if nom == "psychopy":
+        return True
+    return any(nom == a or nom.startswith(a + ".") for a in autorises)
 
 
 def verifier(fichiers: Iterable[str], moteur_json: str = MOTEUR_JSON) -> List[str]:
     fichiers = list(fichiers)
     autorises = modules_autorises(moteur_json)
-    locaux = {os.path.splitext(os.path.basename(f))[0] for f in fichiers}
-    for f in fichiers:   # paquets/modules livrés avec l'exercice
+    locaux: Set[str] = set()
+    for f in fichiers:   # modules livrés avec l'exercice (fichiers voisins)
         d = os.path.dirname(os.path.abspath(f))
         for n in os.listdir(d):
-            if n.endswith(".py") or os.path.isdir(os.path.join(d, n)):
-                locaux.add(os.path.splitext(n)[0])
+            if n.endswith(".py"):
+                locaux.add(n[:-3])
     fautes = []
     for f in fichiers:
         with open(f, encoding="utf-8") as fh:
-            for nom in sorted(imports_de_premier_niveau(fh.read())):
-                if nom not in autorises and nom not in locaux:
+            for nom in sorted(imports(fh.read())):
+                if not _autorise(nom, autorises, locaux):
                     fautes.append(f"{os.path.basename(f)} : import « {nom} » hors moteur")
     return fautes
 

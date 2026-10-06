@@ -78,6 +78,10 @@ class Reglages:
         return os.path.join(self.racine, "journal_lanceur.log")
 
     @property
+    def fichier_journal_enfant(self) -> str:
+        return os.path.join(self.racine, "journal_erreurs_exercices.log")
+
+    @property
     def dossier_temp(self) -> str:
         return os.path.join(self.racine, "temp")
 

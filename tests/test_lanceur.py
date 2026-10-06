@@ -425,10 +425,12 @@ class TestContratMoteur(Base):
     def test_import_hors_moteur_detecte(self):
         f = os.path.join(self.tmp, "exo.py")
         with open(f, "w") as fh:
-            fh.write("import os\nimport numpy as np\nfrom psychopy import visual\nimport requests\n")
+            fh.write("import os\nimport numpy as np\nfrom psychopy import visual, core\nimport requests\n"
+                     "from psychopy import data\nimport psychopy.visual.shape\nfrom scipy import stats\n")
         fautes = verifier([f])
-        self.assertEqual(len(fautes), 1)
-        self.assertIn("requests", fautes[0])
+        self.assertEqual(len(fautes), 2, fautes)
+        self.assertTrue(any("requests" in x for x in fautes))
+        self.assertTrue(any("psychopy.data" in x for x in fautes))   # sous-module non figé dans le moteur
 
     def test_publication_refusee_si_import_hors_moteur(self):
         src = os.path.join(self.sources, "x.py")

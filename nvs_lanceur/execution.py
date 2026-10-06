@@ -52,12 +52,29 @@ def environnement_enfant(dossier_donnees: str, exercice_id: str, version: str) -
     return env
 
 
-def lancer(entree: str, dossier_donnees: str, exercice_id: str, version: str) -> Resultat:
+def lancer(entree: str, dossier_donnees: str, exercice_id: str, version: str, journal_enfant: str = "") -> Resultat:
     os.makedirs(dossier_donnees, exist_ok=True)
+    env = environnement_enfant(dossier_donnees, exercice_id, version)
+    if journal_enfant:
+        env["NVS_JOURNAL_ENFANT"] = journal_enfant
     debut = time.monotonic()
-    proc = subprocess.run(commande_enfant(entree), cwd=dossier_donnees,
-                          env=environnement_enfant(dossier_donnees, exercice_id, version))
+    proc = subprocess.run(commande_enfant(entree), cwd=dossier_donnees, env=env)
     return Resultat(code=proc.returncode, duree_s=time.monotonic() - debut)
+
+
+def _tracer(exc_texte: str) -> None:
+    """L'exécutable gelé n'a pas de console : la trace d'un échec va dans NVS_JOURNAL_ENFANT (aucune donnée patient
+    n'y figure : seulement la pile d'appel Python)."""
+    chemin = os.environ.get("NVS_JOURNAL_ENFANT")
+    if sys.stderr is not None:
+        sys.stderr.write(exc_texte)
+    if chemin:
+        try:
+            with open(chemin, "a", encoding="utf-8") as f:
+                f.write(time.strftime("%Y-%m-%d %H:%M:%S ") + os.environ.get("NVS_EXERCICE_ID", "?") + " "
+                        + os.environ.get("NVS_EXERCICE_VERSION", "?") + "\n" + exc_texte + "\n")
+        except OSError:
+            pass
 
 
 def executer_dans_ce_processus(entree: str) -> int:
@@ -71,10 +88,10 @@ def executer_dans_ce_processus(entree: str) -> int:
         code = exc.code
         return code if isinstance(code, int) else (0 if code is None else 1)
     except (ImportError, SyntaxError):
-        traceback.print_exc()
+        _tracer(traceback.format_exc())
         return CODE_INCOMPATIBLE
     except Exception:
-        traceback.print_exc()
+        _tracer(traceback.format_exc())
         return CODE_EXCEPTION
     return 0
 
