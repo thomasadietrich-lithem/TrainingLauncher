@@ -1,0 +1,7 @@
+{
+  "moteur": 1,
+  "description": "Bibliothèques figées dans le lanceur. Un exercice ne peut importer que la bibliothèque standard Python et les modules de premier niveau listés dans modules_autorises. Toute nouvelle dépendance tierce => moteur + 1 => nouvel installeur.",
+  "modules_autorises": ["psychopy", "numpy", "scipy", "pyglet", "PIL"],
+  "modules_a_verifier": ["psychopy", "psychopy.core", "psychopy.event", "psychopy.gui", "psychopy.monitors",
+                         "psychopy.sound", "psychopy.visual", "numpy", "scipy", "pyglet", "PIL", "cryptography"]
+}

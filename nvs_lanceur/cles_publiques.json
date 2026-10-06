@@ -1,0 +1,4 @@
+{
+  "note": "Clés publiques Ed25519 de confiance (principale + secours). Remplies par outils/generer_cles.py. Les clés PRIVÉES ne vont jamais dans ce dépôt ni sur AWS.",
+  "cles": {}
+}
