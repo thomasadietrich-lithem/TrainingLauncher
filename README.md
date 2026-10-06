@@ -43,8 +43,9 @@ sous un numéro de version plus grand (les numéros ne reculent jamais).
 `python -m unittest discover -s tests -v` (serveur HTTP local, vraies signatures, vrais processus enfants).
 
 ## État
-Phase P2 (logique du lanceur) : faite, 27 tests. À venir : P3 fabrication Windows (PyInstaller onedir + Inno Setup
-via GitHub Actions), P4 canal, P5 pilote. Prérequis côté exercice : `docs/adaptation_exercice.md`.
+P2 (logique du lanceur) : faite, 27 tests. P3 (fabrication Windows) : faite — workflow « Fabriquer l'installeur
+Windows » (tests sous Windows, PyInstaller dossier, auto-test du gelé, Inno Setup, installation/désinstallation
+silencieuses) ; installeur ~103 Mo (zip). À venir : P4 canal de publication signé, P5 pilote. Prérequis côté exercice : `docs/adaptation_exercice.md`.
 
 ## Création des clés
 Ouvrir `outils/Creer_cles_NVS.html` dans Edge ou Chrome (aucune installation, Python non requis) : crée principale +
