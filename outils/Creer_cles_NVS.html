@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Création des clés NeuroVision</title>
+<style>
+  :root { --bleu:#1D55AD; --fond:#f6f7f9; --texte:#1b1f24; --gris:#5b6470; --ok:#0b7a3e; --err:#b42318; }
+  body { margin:0; background:var(--fond); color:var(--texte); font:17px/1.5 "Segoe UI", system-ui, sans-serif; }
+  main { max-width:760px; margin:32px auto; padding:0 16px; }
+  h1 { color:var(--bleu); font-size:26px; margin:0 0 8px; }
+  .carte { background:#fff; border:1px solid #dde2e8; border-left:5px solid var(--bleu); border-radius:10px;
+           padding:20px 24px; margin:18px 0; }
+  button { font:inherit; font-weight:600; background:var(--bleu); color:#fff; border:0; border-radius:8px;
+           padding:12px 22px; cursor:pointer; }
+  button:disabled { background:#9aa7b8; cursor:default; }
+  button.second { background:#fff; color:var(--bleu); border:2px solid var(--bleu); }
+  textarea { width:100%; box-sizing:border-box; height:150px; font:14px/1.4 Consolas, monospace; padding:10px;
+             border:1px solid #c9d1db; border-radius:8px; }
+  .petit { color:var(--gris); font-size:15px; }
+  .ok { color:var(--ok); font-weight:600; } .err { color:var(--err); font-weight:600; }
+  ol li { margin:6px 0; }
+  .cache { display:none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Création des clés de signature NeuroVision</h1>
+  <p class="petit">À faire une seule fois. Tout se passe dans ce navigateur : rien n'est envoyé sur Internet.</p>
+
+  <div class="carte">
+    <ol>
+      <li>Branchez la clé USB (par exemple <b>D:\ClefNVS</b>).</li>
+      <li>Cliquez sur <b>Créer les clés</b>, puis choisissez ce dossier sur la clé USB.</li>
+      <li>Copiez le texte qui apparaît en bas et collez-le à Claude.</li>
+    </ol>
+    <button id="go">Créer les clés</button>
+    <p id="etat" class="petit"></p>
+  </div>
+
+  <div id="resultat" class="carte cache">
+    <p class="ok">Clés créées et vérifiées.</p>
+    <p><b>Fichiers privés</b> (à ne jamais envoyer à personne, ni à Claude) :<br>
+      <span id="ou" class="petit"></span></p>
+    <p><b>Texte à copier et coller à Claude</b> (clés publiques, non secrètes) :</p>
+    <textarea id="pub" readonly></textarea>
+    <p><button id="copier" class="second">Copier le texte</button> <span id="copie" class="petit"></span></p>
+  </div>
+</main>
+<script>
+"use strict";
+const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
+const b64url2b64 = (s) => { s = s.replace(/-/g, "+").replace(/_/g, "/"); while (s.length % 4) s += "="; return s; };
+const etat = (t, cls) => { const e = document.getElementById("etat"); e.textContent = t; e.className = cls || "petit"; };
+
+async function creerCle() {
+  const paire = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]);
+  const jwk = await crypto.subtle.exportKey("jwk", paire.privateKey);
+  const pub = b64(await crypto.subtle.exportKey("raw", paire.publicKey));
+  // contrôle : signer puis vérifier
+  const msg = new TextEncoder().encode("controle NeuroVision");
+  const sig = await crypto.subtle.sign({ name: "Ed25519" }, paire.privateKey, msg);
+  if (!(await crypto.subtle.verify({ name: "Ed25519" }, paire.publicKey, sig, msg))) throw new Error("contrôle échoué");
+  return { prive: b64url2b64(jwk.d), pub };   // format attendu par outils/publier.py : 32 octets en base64
+}
+
+async function ecrire(dossier, nom, texte) {
+  if (dossier) {
+    try { await dossier.getFileHandle(nom); throw new Error(`« ${nom} » existe déjà dans ce dossier : choisissez un dossier vide.`); }
+    catch (e) { if (e.name !== "NotFoundError") throw e; }
+    const f = await dossier.getFileHandle(nom, { create: true });
+    const w = await f.createWritable(); await w.write(texte); await w.close();
+  } else {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([texte], { type: "text/plain" }));
+    a.download = nom; document.body.appendChild(a); a.click(); a.remove();
+  }
+}
+
+document.getElementById("go").addEventListener("click", async () => {
+  const bouton = document.getElementById("go");
+  try {
+    if (!window.crypto || !crypto.subtle) throw new Error("navigateur trop ancien : ouvrez ce fichier avec Microsoft Edge ou Google Chrome à jour.");
+    let dossier = null;
+    if (window.showDirectoryPicker) {
+      etat("Choisissez le dossier sur la clé USB…");
+      dossier = await window.showDirectoryPicker({ id: "clesnvs", mode: "readwrite" });
+    }
+    bouton.disabled = true;
+    etat("Création en cours…");
+    const principale = await creerCle(), secours = await creerCle();
+    await ecrire(dossier, "principale.cle_privee", principale.prive);
+    await ecrire(dossier, "secours.cle_privee", secours.prive);
+    document.getElementById("ou").textContent = dossier
+      ? `principale.cle_privee et secours.cle_privee, dans le dossier « ${dossier.name} » que vous avez choisi.`
+      : "principale.cle_privee et secours.cle_privee ont été téléchargés : déplacez-les du dossier Téléchargements vers la clé USB.";
+    document.getElementById("pub").value = JSON.stringify({ cles: { principale: principale.pub, secours: secours.pub } }, null, 2);
+    document.getElementById("resultat").classList.remove("cache");
+    etat("");
+  } catch (e) {
+    bouton.disabled = false;
+    if (e && e.name === "AbortError") { etat("Aucun dossier choisi. Recommencez quand vous voulez."); return; }
+    etat("Erreur : " + (e && e.message ? e.message : e) + " — copiez ce message à Claude.", "err");
+  }
+});
+
+document.getElementById("copier").addEventListener("click", async () => {
+  const t = document.getElementById("pub");
+  try { await navigator.clipboard.writeText(t.value); } catch (_) { t.select(); document.execCommand("copy"); }
+  document.getElementById("copie").textContent = "Copié.";
+});
+</script>
+</body>
+</html>
