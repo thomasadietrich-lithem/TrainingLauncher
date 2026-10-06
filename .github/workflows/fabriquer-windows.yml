@@ -1,5 +1,6 @@
 # Fabrication Windows du lanceur NeuroVision (document directeur, chapitre 16.7 P3).
-# Sorties (onglet Actions → l'exécution → Artifacts) : Installer_NeuroVision.exe + rapport d'auto-test.
+# Téléchargement (onglet Actions → l'exécution → Artifacts) : un zip contenant Installer_NeuroVision.exe et un dossier
+# « Rapport de fabrication » (auto-test, versions des bibliothèques).
 # Aucune clé ni aucun secret n'est utilisé ici (dépôt public : les journaux sont publics).
 name: Fabriquer l'installeur Windows
 
@@ -96,12 +97,17 @@ jobs:
           $u = Start-Process "$env:LOCALAPPDATA\NeuroVisionSolidaire\app\unins000.exe" -ArgumentList "/VERYSILENT" -Wait -PassThru
           "désinstallation : code $($u.ExitCode)"
 
+      - name: Préparer le téléchargement (installeur à la racine, rapports à part)
+        if: always()
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force "telechargement\Rapport de fabrication" | Out-Null
+          if (Test-Path sortie\Installer_NeuroVision.exe) { Copy-Item sortie\Installer_NeuroVision.exe telechargement\ }
+          foreach ($f in "auto_test.txt","pip_freeze.txt") { if (Test-Path $f) { Copy-Item $f "telechargement\Rapport de fabrication\" } }
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: Installer_NeuroVision-${{ steps.version.outputs.v }}
-          path: |
-            sortie/Installer_NeuroVision.exe
-            auto_test.txt
-            pip_freeze.txt
+          name: NeuroVision-${{ steps.version.outputs.v }}-installeur-Windows
+          path: telechargement/
           retention-days: 30
