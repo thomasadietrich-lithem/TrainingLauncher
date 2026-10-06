@@ -6,7 +6,7 @@ import json
 import os
 import sys
 from dataclasses import dataclass, field
-from typing import Dict
+from typing import Dict, Optional
 
 # Canal de publication (CloudFront du portail, préfixe logiciel/). Surchargé par NVS_URL_BASE (tests, canal pilote).
 URL_BASE_DEFAUT = "https://d2ip5ef1wmcekr.cloudfront.net/logiciel/"
@@ -59,6 +59,7 @@ class Reglages:
     cles_publiques: Dict[str, str] = field(default_factory=dict)
     delai_reseau_s: float = DELAI_RESEAU_S
     delai_echec_demarrage_s: float = DELAI_ECHEC_DEMARRAGE_S
+    donnees: Optional[str] = None   # dossier de données choisi (emplacement.resoudre) ; HORS des données de l'appli
 
     # Arborescence (chap. 16.2). « donnees » n'est JAMAIS effacé ni déplacé par le lanceur.
     @property
@@ -67,7 +68,7 @@ class Reglages:
 
     @property
     def dossier_donnees(self) -> str:
-        return os.path.join(self.racine, "donnees")
+        return self.donnees or os.path.join(self.racine, "donnees")
 
     @property
     def fichier_etat(self) -> str:

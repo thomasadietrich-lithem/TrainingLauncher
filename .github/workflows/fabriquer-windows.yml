@@ -13,6 +13,7 @@ on:
       - "moteur/**"
       - "installeur/**"
       - "NeuroVision.py"
+      - "msix/**"
       - ".github/workflows/fabriquer-windows.yml"
 
 permissions:
@@ -97,6 +98,53 @@ jobs:
           $u = Start-Process "$env:LOCALAPPDATA\NeuroVisionSolidaire\app\unins000.exe" -ArgumentList "/VERYSILENT" -Wait -PassThru
           "désinstallation : code $($u.ExitCode)"
 
+      - name: Paquet Microsoft Store (MSIX) — fabrication
+        shell: pwsh
+        env:
+          MSIX_NOM: ${{ vars.MSIX_NOM }}
+          MSIX_EDITEUR: ${{ vars.MSIX_EDITEUR }}
+          MSIX_EDITEUR_AFFICHE: ${{ vars.MSIX_EDITEUR_AFFICHE }}
+        run: |
+          $sdk = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\makeappx.exe" | Sort-Object FullName -Descending | Select-Object -First 1
+          if (-not $sdk) { throw "makeappx introuvable" }
+          "MAKEAPPX=$($sdk.FullName)" | Out-File -Append $env:GITHUB_ENV
+          "SIGNTOOL=$(Join-Path $sdk.DirectoryName 'signtool.exe')" | Out-File -Append $env:GITHUB_ENV
+          $version = "${{ steps.version.outputs.v }}.0"
+          function Fabriquer($nom, $editeur, $affiche, $sortie) {
+            Remove-Item -Recurse -Force msix_couche -ErrorAction SilentlyContinue
+            Copy-Item -Recurse dist\NeuroVision msix_couche
+            Copy-Item -Recurse msix\Assets msix_couche\Assets
+            (Get-Content msix\AppxManifest.modele.xml -Raw -Encoding utf8).Replace('__NOM__',$nom).Replace('__EDITEUR__',$editeur).Replace('__EDITEUR_AFFICHE__',$affiche).Replace('__VERSION__',$version) | Set-Content msix_couche\AppxManifest.xml -Encoding utf8
+            & $sdk.FullName pack /o /d msix_couche /p $sortie | Out-File makeappx.log
+            if ($LASTEXITCODE -ne 0) { Get-Content makeappx.log -Tail 12 | ForEach-Object { "::error::$_" }; throw "makeappx" }
+          }
+          # 1) paquet d'ESSAI (identité de test, signé ci-dessous par un certificat jetable)
+          Fabriquer "NeuroVisionSolidaire.Essai" "CN=NeuroVision-Essai" "NeuroVision (essai)" "NeuroVision_essai.msix"
+          # 2) paquet STORE (non signé : le Store le signe) — seulement si l'identité Partner Center est renseignée
+          if ($env:MSIX_NOM -and $env:MSIX_EDITEUR) {
+            Fabriquer $env:MSIX_NOM $env:MSIX_EDITEUR ($env:MSIX_EDITEUR_AFFICHE ?? "NeuroVision Solidaire") "NeuroVision_Store.msix"
+            "::notice::paquet Store fabriqué pour $env:MSIX_NOM"
+          } else { "::notice::identité Partner Center absente (variables MSIX_NOM / MSIX_EDITEUR) : paquet Store non fabriqué" }
+
+      - name: Paquet MSIX — essai d'installation, lancement et désinstallation
+        shell: pwsh
+        run: |
+          $cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject "CN=NeuroVision-Essai" -CertStoreLocation Cert:\CurrentUser\My -NotAfter (Get-Date).AddDays(2)
+          $mdp = ConvertTo-SecureString -String "essai-jetable" -Force -AsPlainText
+          Export-PfxCertificate -Cert $cert -FilePath essai.pfx -Password $mdp | Out-Null
+          Export-Certificate -Cert $cert -FilePath essai.cer | Out-Null
+          Import-Certificate -FilePath essai.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople | Out-Null
+          & $env:SIGNTOOL sign /fd SHA256 /f essai.pfx /p essai-jetable NeuroVision_essai.msix | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "signtool (essai)" }
+          Add-AppxPackage -Path NeuroVision_essai.msix
+          $sortie = "$env:RUNNER_TEMP\auto_test_msix.txt"
+          $alias = "$env:LOCALAPPDATA\Microsoft\WindowsApps\NeuroVisionSolidaire.exe"
+          $p = Start-Process $alias -ArgumentList "--auto-test",$sortie -Wait -PassThru
+          Get-Content $sortie | ForEach-Object { "::notice::MSIX $_" }
+          if ($p.ExitCode -ne 0) { throw "auto-test du paquet MSIX en échec" }
+          Get-AppxPackage NeuroVisionSolidaire.Essai | Remove-AppxPackage
+          Remove-Item essai.pfx, essai.cer
+
       - name: Préparer le téléchargement (installeur à la racine, rapports à part)
         if: always()
         shell: pwsh
@@ -104,6 +152,7 @@ jobs:
           New-Item -ItemType Directory -Force "telechargement\Rapport de fabrication" | Out-Null
           if (Test-Path sortie\Installer_NeuroVision.exe) { Copy-Item sortie\Installer_NeuroVision.exe telechargement\ }
           foreach ($f in "auto_test.txt","pip_freeze.txt") { if (Test-Path $f) { Copy-Item $f "telechargement\Rapport de fabrication\" } }
+          if (Test-Path NeuroVision_Store.msix) { New-Item -ItemType Directory -Force "telechargement\Microsoft Store" | Out-Null; Copy-Item NeuroVision_Store.msix "telechargement\Microsoft Store\" }
 
       - uses: actions/upload-artifact@v4
         if: always()

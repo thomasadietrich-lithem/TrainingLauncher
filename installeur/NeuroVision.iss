@@ -1,11 +1,12 @@
-; Installeur NeuroVision Solidaire (Inno Setup 6) — document directeur, chapitre 16.2 / 16.6.
+﻿; Installeur NeuroVision Solidaire (Inno Setup 6) — document directeur, chapitre 16.2 / 16.6.
 ;
 ; INVARIANTS (ne JAMAIS changer, sinon les installeurs futurs — signés — ne mettront plus à jour les postes) :
 ;   AppId            {6F9149E1-9C18-49E3-B14B-34AF00CD0987}
 ;   DefaultDirName   {localappdata}\NeuroVisionSolidaire\app
 ;   installation par utilisateur, sans droits administrateur.
-; Les dossiers exercices\ et donnees\ (à côté de app\) appartiennent au lanceur : l'installeur ne les crée ni ne les
-; efface, la désinstallation non plus (les séances du patient sont conservées).
+; Les dossiers exercices\ (à côté de app\) et le dossier de DONNÉES choisi au 1er lancement (par défaut
+; Documents\NeuroVision Solidaire) ne sont ni créés ni effacés par l'installeur ou la désinstallation ; un message
+; le rappelle avant de désinstaller.
 ;
 ; Compilation (CI) : iscc /DAppVersion=1.0.0 /DSourceDir=..\dist\NeuroVision installeur\NeuroVision.iss
 ; Mode silencieux (auto-mise à jour par le lanceur) : Installer_NeuroVision.exe /VERYSILENT /SUPPRESSMSGBOXES
@@ -53,6 +54,8 @@ Name: "en"; MessagesFile: "compiler:Default.isl"
 [CustomMessages]
 fr.Lancer=Lancer NeuroVision maintenant
 en.Lancer=Start NeuroVision now
+fr.AvertDesinst=Vos séances et vos réglages ne sont PAS supprimés : ils restent dans le dossier choisi au premier lancement (par défaut « Documents\NeuroVision Solidaire »).%n%nNe supprimez pas ce dossier : les séances qui n'ont pas encore été envoyées à l'association s'y trouvent.%n%nContinuer la désinstallation ?
+en.AvertDesinst=Your sessions and settings are NOT deleted: they stay in the folder chosen at first start (by default "Documents\NeuroVision Solidaire").%n%nDo not delete this folder: sessions not yet sent to the association are kept there.%n%nContinue uninstalling?
 
 [Files]
 ; Remplacement complet du lanceur à chaque version (ignoreversion), sans toucher au reste.
@@ -73,6 +76,13 @@ Filename: "{app}\NeuroVision.exe"; Description: "{cm:Lancer}"; Flags: nowait pos
 Filename: "{app}\NeuroVision.exe"; Flags: nowait; Check: RelancerDemande
 
 [Code]
+function InitializeUninstall(): Boolean;
+begin
+  Result := True;
+  if not UninstallSilent() then
+    Result := MsgBox(CustomMessage('AvertDesinst'), mbConfirmation, MB_YESNO) = IDYES;
+end;
+
 function RelancerDemande(): Boolean;
 begin
   Result := WizardSilent() and (ExpandConstant('{param:RELANCER|0}') = '1');

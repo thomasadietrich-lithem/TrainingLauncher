@@ -22,6 +22,13 @@ TEXTES = {
         "echec_total": "L'exercice n'a pas pu démarrer.\n\nContactez l'association en indiquant le code {code}.",
         "quitter": "Quitter",
         "ok": "OK",
+        "dossier_titre": "Où ranger vos séances ?",
+        "dossier_texte": "NeuroVision va ranger vos séances et vos réglages dans ce dossier.\n"
+                         "Ils y restent même si NeuroVision est désinstallé.\n"
+                         "Ne supprimez pas ce dossier.",
+        "dossier_continuer": "Continuer",
+        "dossier_autre": "Choisir un autre dossier…",
+        "dossier_impossible": "Impossible d'écrire dans ce dossier. Choisissez-en un autre.",
     },
     "en": {
         "titre": "NeuroVision Solidaire",
@@ -36,6 +43,13 @@ TEXTES = {
         "echec_total": "The exercise could not start.\n\nPlease contact the association and give code {code}.",
         "quitter": "Quit",
         "ok": "OK",
+        "dossier_titre": "Where should your sessions be kept?",
+        "dossier_texte": "NeuroVision will keep your sessions and settings in this folder.\n"
+                         "They stay there even if NeuroVision is uninstalled.\n"
+                         "Do not delete this folder.",
+        "dossier_continuer": "Continue",
+        "dossier_autre": "Choose another folder…",
+        "dossier_impossible": "This folder cannot be written to. Please choose another one.",
     },
 }
 
@@ -72,6 +86,11 @@ class Interface:
     def choisir(self, options: Sequence[Tuple[str, str]]) -> Optional[str]:
         """options = [(id, nom affiché)] ; retourne l'id choisi ou None (quitter)."""
         return options[0][0] if options else None
+
+    def choisir_dossier(self, defaut: str) -> Optional[str]:
+        """Premier lancement : confirme (ou change) le dossier des données. None = quitter."""
+        print(self.t("dossier_texte"), defaut)
+        return defaut
 
 
 class InterfaceTk(Interface):  # pragma: no cover - testée sur Windows (P3/P5)
@@ -140,6 +159,40 @@ class InterfaceTk(Interface):  # pragma: no cover - testée sur Windows (P3/P5)
         w.grab_set()
         self.racine.wait_window(w)
         return choix[0]
+
+    def choisir_dossier(self, defaut: str) -> Optional[str]:
+        from tkinter import filedialog
+        self.fermer_progression()
+        resultat: List[Optional[str]] = [None]
+        courant = [defaut]
+        w = self._fenetre()
+        self.tk.Label(w, text=self.t("dossier_titre"), font=("Segoe UI", 18, "bold"), bg="white",
+                      fg="#1D55AD").pack(pady=(0, 12))
+        self.tk.Label(w, text=self.t("dossier_texte"), font=("Segoe UI", 14), bg="white", justify="center",
+                      wraplength=640).pack(pady=(0, 12))
+        chemin = self.tk.Label(w, text=defaut, font=("Segoe UI", 13, "bold"), bg="#eef3fb", padx=12, pady=8,
+                               wraplength=640)
+        chemin.pack(pady=(0, 18), fill="x")
+
+        def _continuer():
+            resultat[0] = courant[0]
+            w.destroy()
+
+        def _autre():
+            d = filedialog.askdirectory(parent=w, initialdir=os.path.dirname(courant[0]) or courant[0],
+                                        mustexist=False)
+            if d:
+                courant[0] = os.path.normpath(d)
+                chemin.configure(text=courant[0])
+
+        self.tk.Button(w, text=self.t("dossier_continuer"), font=("Segoe UI", 16, "bold"), width=18, pady=6,
+                       bg="#1D55AD", fg="white", command=_continuer).pack(pady=4)
+        self.tk.Button(w, text=self.t("dossier_autre"), font=("Segoe UI", 13), command=_autre).pack(pady=4)
+        self.tk.Button(w, text=self.t("quitter"), font=("Segoe UI", 12), command=w.destroy).pack(pady=(14, 0))
+        self._centrer(w)
+        w.grab_set()
+        self.racine.wait_window(w)
+        return resultat[0]
 
 
 def interface_par_defaut() -> Interface:

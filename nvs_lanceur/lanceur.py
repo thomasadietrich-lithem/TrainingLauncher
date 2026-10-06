@@ -19,6 +19,7 @@ from typing import Callable, List, Optional, Tuple
 from . import MOTEUR, VERSION
 from .config import TAILLE_MAX_FICHIER, TAILLE_MAX_INSTALLEUR, TAILLE_MAX_MANIFESTE, Reglages
 from .depot import Depot
+from . import emplacement
 from .execution import Resultat, echec_au_demarrage
 from . import execution
 from .interface import Interface
@@ -33,6 +34,7 @@ SORTIE_MAJ_LANCEUR = 10
 ERR_AUCUN_EXERCICE = 20
 ERR_PREMIERE_INSTALLATION = 21
 ERR_EXERCICE_KO = 30
+SORTIE_SANS_DOSSIER = 40
 
 
 def configurer_journal(reglages: Reglages) -> None:
@@ -42,6 +44,20 @@ def configurer_journal(reglages: Reglages) -> None:
     h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
     log.handlers[:] = [h]
     log.setLevel(logging.INFO)
+
+
+def est_paquet_msix() -> bool:  # pragma: no cover - Windows uniquement
+    """Vrai si le lanceur tourne depuis un paquet MSIX (Microsoft Store) : ses mises à jour passent alors par le Store,
+    jamais par l'installeur Inno."""
+    if os.name != "nt":
+        return False
+    try:
+        import ctypes
+        longueur = ctypes.c_uint32(0)
+        r = ctypes.windll.kernel32.GetCurrentPackageFullName(ctypes.byref(longueur), None)
+        return r == 122   # ERROR_INSUFFICIENT_BUFFER = il y a un paquet ; 15700 = pas de paquet
+    except Exception:
+        return False
 
 
 def signature_authenticode_valide(chemin: str) -> bool:  # pragma: no cover - Windows uniquement
@@ -68,13 +84,15 @@ class Lanceur:
     def __init__(self, reglages: Reglages, interface: Interface,
                  executer: Optional[Callable[[str, str, str, str], Resultat]] = None,
                  installer_lanceur: Callable[[str], None] = lancer_installeur,
-                 verifier_authenticode: Callable[[str], bool] = signature_authenticode_valide):
+                 verifier_authenticode: Callable[[str], bool] = signature_authenticode_valide,
+                 est_msix: Callable[[], bool] = est_paquet_msix):
         self.r = reglages
         self.ui = interface
         self.executer = executer or (lambda entree, donnees, eid, v: execution.lancer(
             entree, donnees, eid, v, journal_enfant=reglages.fichier_journal_enfant))
         self.installer_lanceur = installer_lanceur
         self.verifier_authenticode = verifier_authenticode
+        self.est_msix = est_msix
         self.depot = Depot(reglages)
 
     # ------------------------------------------------------------ manifeste
@@ -112,6 +130,10 @@ class Lanceur:
         except ManifesteInvalide:
             return False
         if not trop_vieux:
+            return False
+        if self.est_msix():
+            log.info("lanceur %s < version_min %s : mise à jour attendue via le Microsoft Store", VERSION,
+                     m.lanceur_version_min)
             return False
         if m.installeur is None:
             log.warning("lanceur %s < version_min %s mais aucun installeur publié", VERSION, m.lanceur_version_min)
@@ -214,6 +236,13 @@ class Lanceur:
     # ------------------------------------------------------------ entrée
     def demarrer(self) -> int:
         log.info("=== lanceur %s (moteur %s) ===", VERSION, MOTEUR)
+        if not self.r.donnees:
+            dossier = emplacement.resoudre(self.r.racine, self.ui.choisir_dossier)
+            if dossier is None:
+                log.info("aucun dossier de données choisi : sortie")
+                return SORTIE_SANS_DOSSIER
+            self.r.donnees = dossier
+            log.info("dossier de données : choisi (hors données de l'application)")
         self.ui.progression("verif")
         m = self.obtenir_manifeste()
         self.ui.fermer_progression()

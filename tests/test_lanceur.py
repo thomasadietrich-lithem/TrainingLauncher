@@ -89,6 +89,18 @@ class InterfaceTest(Interface):
         self.options_vues = list(options)
         return self.choix
 
+    dossier = "defaut"          # "defaut" = Continuer ; None = Quitter ; sinon chemin choisi (ou liste de chemins)
+    dossiers_proposes = None
+
+    def choisir_dossier(self, defaut):
+        if self.dossiers_proposes is None:
+            self.dossiers_proposes = []
+        self.dossiers_proposes.append(defaut)
+        d = self.dossier
+        if isinstance(d, list):
+            return d.pop(0) if d else None
+        return defaut if d == "defaut" else d
+
 
 class Base(unittest.TestCase):
     def setUp(self):
@@ -111,6 +123,9 @@ class Base(unittest.TestCase):
             json.dump({"cles": self.pub}, f)
         self.srv = Serveur(self.web)
         self.racine = os.path.join(self.tmp, "poste")
+        self.documents = os.path.join(self.tmp, "Documents")
+        os.environ["NVS_DOCUMENTS"] = self.documents
+        self.donnees = os.path.join(self.documents, "NeuroVision Solidaire")
         self.sources = os.path.join(self.tmp, "sources")
         os.makedirs(self.sources)
 
@@ -145,7 +160,7 @@ class Base(unittest.TestCase):
         return Lanceur(r, ui or InterfaceTest(), **kw)
 
     def seances(self, eid="tilt_global"):
-        p = os.path.join(self.racine, "donnees", eid, "session_data", "seances.txt")
+        p = os.path.join(self.donnees, eid, "session_data", "seances.txt")
         if not os.path.exists(p):
             return []
         with open(p) as f:
@@ -164,7 +179,7 @@ class TestParcours(Base):
         self.assertEqual(L.demarrer(), OK)
         self.assertEqual(self.seances(), ["2.15.0"])
         # l'exercice tourne avec cwd = son dossier de données et y range config/ + session_data/
-        donnees = os.path.join(self.racine, "donnees", "tilt_global")
+        donnees = os.path.join(self.donnees, "tilt_global")
         with open(os.path.join(donnees, "session_data", "seances.txt")) as f:
             self.assertEqual(os.path.realpath(f.read().split("|")[1].strip()), os.path.realpath(donnees))
         self.assertTrue(os.path.exists(os.path.join(donnees, "config", "envois_en_attente.json")))
@@ -205,6 +220,62 @@ class TestParcours(Base):
         ui = L.ui
         self.assertEqual(L.demarrer(), ERR_PREMIERE_INSTALLATION)
         self.assertIn(("msg", "premiere_install"), ui.messages)
+
+
+class TestDossierDonnees(Base):
+    """Les données vivent HORS des données de l'application (MSIX efface ces dernières à la désinstallation)."""
+
+    def test_premier_lancement_demande_puis_memorise(self):
+        self.publier(v="2.15.0")
+        ui = InterfaceTest()
+        self.assertEqual(self.lanceur(ui).demarrer(), OK)
+        self.assertEqual(ui.dossiers_proposes, [self.donnees])
+        self.assertTrue(os.path.isfile(os.path.join(self.donnees, ".neurovision_donnees.json")))
+        ui2 = InterfaceTest()
+        self.lanceur(ui2).demarrer()
+        self.assertIsNone(ui2.dossiers_proposes)          # plus de question ensuite
+        self.assertEqual(self.seances(), ["2.15.0", "2.15.0"])
+
+    def test_reinstallation_retrouve_les_donnees(self):
+        self.publier(v="2.15.0")
+        self.lanceur().demarrer()
+        shutil.rmtree(self.racine)                         # désinstallation MSIX : données de l'appli effacées
+        ui = InterfaceTest()
+        self.assertEqual(self.lanceur(ui).demarrer(), OK)
+        self.assertIsNone(ui.dossiers_proposes)            # dossier par défaut retrouvé grâce au témoin
+        self.assertEqual(self.seances(), ["2.15.0", "2.15.0"])
+        self.assertTrue(os.path.exists(os.path.join(self.donnees, "tilt_global", "config",
+                                                    "envois_en_attente.json")))
+
+    def test_autre_dossier_choisi(self):
+        self.publier(v="2.15.0")
+        autre = os.path.join(self.tmp, "Mes séances")
+        ui = InterfaceTest()
+        ui.dossier = autre
+        self.lanceur(ui).demarrer()
+        with open(os.path.join(autre, "tilt_global", "session_data", "seances.txt")) as f:
+            self.assertEqual(f.read().split("|")[0], "2.15.0")
+        self.assertFalse(os.path.exists(self.donnees))
+
+    def test_quitter_sans_dossier(self):
+        from nvs_lanceur.lanceur import SORTIE_SANS_DOSSIER
+        self.publier(v="2.15.0")
+        ui = InterfaceTest()
+        ui.dossier = None
+        self.assertEqual(self.lanceur(ui).demarrer(), SORTIE_SANS_DOSSIER)
+        self.assertEqual(self.seances(), [])
+
+    @unittest.skipIf(os.name == "nt" or (hasattr(os, "geteuid") and os.geteuid() == 0), "droits POSIX")
+    def test_dossier_non_inscriptible_redemande(self):
+        self.publier(v="2.15.0")
+        bloque = os.path.join(self.tmp, "bloque")
+        os.makedirs(bloque)
+        os.chmod(bloque, 0o500)
+        ui = InterfaceTest()
+        ui.dossier = [os.path.join(bloque, "x"), self.donnees]
+        self.assertEqual(self.lanceur(ui).demarrer(), OK)
+        self.assertEqual(len(ui.dossiers_proposes), 2)
+        os.chmod(bloque, 0o700)
 
 
 class TestSecurite(Base):
@@ -411,6 +482,16 @@ class TestAutoMiseAJour(Base):
         L = self.lanceur(installer_lanceur=lances.append, verifier_authenticode=lambda p: False)
         self.assertEqual(L.demarrer(), OK)          # on continue avec ce qui est installé
         self.assertEqual(lances, [])
+
+    def test_paquet_store_pas_d_installeur(self):
+        self.publier(v="2.15.0")
+        self.publier_options("--lanceur-version-min", "9.0.0", "--installeur", self._installeur(),
+                             "--lanceur-version", "9.0.0")
+        lances = []
+        L = self.lanceur(installer_lanceur=lances.append, est_msix=lambda: True)
+        self.assertEqual(L.demarrer(), OK)            # le Store se charge de la mise à jour ; l'exercice tourne
+        self.assertEqual(lances, [])
+        self.assertEqual(self.seances(), ["2.15.0"])
 
     def test_lanceur_a_jour_ne_reinstalle_pas(self):
         self.publier(v="2.15.0")
