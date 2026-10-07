@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Publier un exercice NeuroVision</title>
+<!-- Page GÉNÉRÉE par outils/generer_page_publication.py à partir de outils/modele_publier.html : ne pas modifier
+     Publier_NVS.html à la main. Équivalent navigateur de outils/publier.py (même format de manifeste, signature
+     Ed25519 sur les octets exacts) — utilisable sans Python. Rien n'est envoyé sur Internet. -->
+<style>
+  :root { --bleu:#1D55AD; --fond:#f6f7f9; --texte:#1b1f24; --gris:#5b6470; --ok:#0b7a3e; --err:#b42318; --orange:#C15A05; }
+  body { margin:0; background:var(--fond); color:var(--texte); font:16px/1.5 "Segoe UI", system-ui, sans-serif; }
+  main { max-width:820px; margin:28px auto; padding:0 16px; }
+  h1 { color:var(--bleu); font-size:25px; margin:0 0 6px; }
+  h2 { font-size:18px; margin:0 0 10px; }
+  .carte { background:#fff; border:1px solid #dde2e8; border-left:5px solid var(--bleu); border-radius:10px; padding:18px 22px; margin:16px 0; }
+  label { display:block; font-weight:600; margin:10px 0 4px; }
+  input[type=text], input[type=number] { font:inherit; padding:7px 10px; border:1px solid #c9d1db; border-radius:7px; width:100%; box-sizing:border-box; }
+  .ligne { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  button { font:inherit; font-weight:600; background:var(--bleu); color:#fff; border:0; border-radius:8px; padding:11px 22px; cursor:pointer; }
+  button:disabled { background:#9aa7b8; cursor:default; }
+  .petit { color:var(--gris); font-size:14px; }
+  .ok { color:var(--ok); font-weight:600; } .err { color:var(--err); font-weight:600; } .avert { color:var(--orange); font-weight:600; }
+  pre { background:#f1f4f8; padding:10px; border-radius:8px; white-space:pre-wrap; font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Publier un exercice NeuroVision</h1>
+  <p class="petit">Prépare et signe une nouvelle version, prête à déposer dans <b>logiciel/</b> du bucket du portail.
+    Tout se passe dans ce navigateur ; la clé privée ne quitte pas votre PC.</p>
+
+  <div class="carte">
+    <h2>1. Clé de signature</h2>
+    <label for="cle">Fichier <b>principale.cle_privee</b> (clé USB)</label>
+    <input type="file" id="cle" accept=".cle_privee">
+    <p id="etat_cle" class="petit"></p>
+  </div>
+
+  <div class="carte">
+    <h2>2. Version actuellement publiée</h2>
+    <p class="petit">Les deux fichiers <b>stable.json</b> et <b>stable.json.sig</b> de la dernière publication
+      (dossier <b>logiciel\canal</b>). Laissez vide pour la toute première publication.</p>
+    <input type="file" id="prec" accept=".json,.sig" multiple>
+    <p id="etat_prec" class="petit"></p>
+  </div>
+
+  <div class="carte">
+    <h2>3. Exercice à publier</h2>
+    <label for="fichiers">Fichier(s) de l'exercice (le 1er est le point d'entrée)</label>
+    <input type="file" id="fichiers" accept=".py" multiple>
+    <div class="ligne">
+      <div><label for="eid">Identifiant</label><input type="text" id="eid" value="tilt_global"></div>
+      <div><label for="version">Version (lue dans le fichier)</label><input type="text" id="version"></div>
+      <div><label for="nom_fr">Nom affiché (français)</label><input type="text" id="nom_fr" value="Entraînement visuel"></div>
+      <div><label for="nom_en">Nom affiché (anglais)</label><input type="text" id="nom_en" value="Visual training"></div>
+      <div><label for="moteur">Moteur requis</label><input type="number" id="moteur" min="1"></div>
+      <div><label for="vmin">Version minimale du lanceur</label><input type="text" id="vmin"></div>
+    </div>
+    <p id="etat_fichiers" class="petit"></p>
+  </div>
+
+  <div class="carte">
+    <h2>4. Signer et enregistrer</h2>
+    <p class="petit">Choisissez le dossier <b>A_DEPLOYER\logiciel</b> (il sera complété : canal\ et exercices\).</p>
+    <button id="go">Signer et enregistrer…</button>
+    <div id="resultat"></div>
+  </div>
+</main>
+<script>
+"use strict";
+const CLES_PUBLIQUES = {"principale": "5EwK5aPSViO7IzdZgV0ZozoiCQHqkaTacqh3cjBxwtA=", "secours": "Uu5ZVLu1/MWEEynPytm6xkVwk50T4TT70LRfWrrK804="};
+const MOTEUR = 1;
+const MODULES_AUTORISES = ["psychopy.core", "psychopy.event", "psychopy.gui", "psychopy.monitors", "psychopy.sound", "psychopy.visual", "psychopy.hardware", "psychopy.tools", "psychopy.logging", "psychopy.clock", "psychopy.constants", "psychopy.colors", "psychopy.layout", "psychopy.preferences", "numpy", "scipy", "pyglet", "PIL"];
+const STDLIB = new Set(["__future__", "_abc", "_aix_support", "_android_support", "_apple_support", "_ast", "_asyncio", "_bisect", "_blake2", "_bz2", "_codecs", "_codecs_cn", "_codecs_hk", "_codecs_iso2022", "_codecs_jp", "_codecs_kr", "_codecs_tw", "_collections", "_collections_abc", "_colorize", "_compat_pickle", "_compression", "_contextvars", "_csv", "_ctypes", "_curses", "_curses_panel", "_datetime", "_dbm", "_decimal", "_elementtree", "_frozen_importlib", "_frozen_importlib_external", "_functools", "_gdbm", "_hashlib", "_heapq", "_imp", "_interpchannels", "_interpqueues", "_interpreters", "_io", "_ios_support", "_json", "_locale", "_lsprof", "_lzma", "_markupbase", "_md5", "_multibytecodec", "_multiprocessing", "_opcode", "_opcode_metadata", "_operator", "_osx_support", "_overlapped", "_pickle", "_posixshmem", "_posixsubprocess", "_py_abc", "_pydatetime", "_pydecimal", "_pyio", "_pylong", "_pyrepl", "_queue", "_random", "_scproxy", "_sha1", "_sha2", "_sha3", "_signal", "_sitebuiltins", "_socket", "_sqlite3", "_sre", "_ssl", "_stat", "_statistics", "_string", "_strptime", "_struct", "_suggestions", "_symtable", "_sysconfig", "_thread", "_threading_local", "_tkinter", "_tokenize", "_tracemalloc", "_typing", "_uuid", "_warnings", "_weakref", "_weakrefset", "_winapi", "_wmi", "_zoneinfo", "abc", "antigravity", "argparse", "array", "ast", "asyncio", "atexit", "base64", "bdb", "binascii", "bisect", "builtins", "bz2", "cProfile", "calendar", "cmath", "cmd", "code", "codecs", "codeop", "collections", "colorsys", "compileall", "concurrent", "configparser", "contextlib", "contextvars", "copy", "copyreg", "csv", "ctypes", "curses", "dataclasses", "datetime", "dbm", "decimal", "difflib", "dis", "doctest", "email", "encodings", "ensurepip", "enum", "errno", "faulthandler", "fcntl", "filecmp", "fileinput", "fnmatch", "fractions", "ftplib", "functools", "gc", "genericpath", "getopt", "getpass", "gettext", "glob", "graphlib", "grp", "gzip", "hashlib", "heapq", "hmac", "html", "http", "idlelib", "imaplib", "importlib", "inspect", "io", "ipaddress", "itertools", "json", "keyword", "linecache", "locale", "logging", "lzma", "mailbox", "marshal", "math", "mimetypes", "mmap", "modulefinder", "msvcrt", "multiprocessing", "netrc", "nt", "ntpath", "nturl2path", "numbers", "opcode", "operator", "optparse", "os", "pathlib", "pdb", "pickle", "pickletools", "pkgutil", "platform", "plistlib", "poplib", "posix", "posixpath", "pprint", "profile", "pstats", "pty", "pwd", "py_compile", "pyclbr", "pydoc", "pydoc_data", "pyexpat", "queue", "quopri", "random", "re", "readline", "reprlib", "resource", "rlcompleter", "runpy", "sched", "secrets", "select", "selectors", "shelve", "shlex", "shutil", "signal", "site", "smtplib", "socket", "socketserver", "sqlite3", "sre_compile", "sre_constants", "sre_parse", "ssl", "stat", "statistics", "string", "stringprep", "struct", "subprocess", "symtable", "sys", "sysconfig", "syslog", "tabnanny", "tarfile", "tempfile", "termios", "textwrap", "this", "threading", "time", "timeit", "tkinter", "token", "tokenize", "tomllib", "trace", "traceback", "tracemalloc", "tty", "turtle", "turtledemo", "types", "typing", "unicodedata", "unittest", "urllib", "uuid", "venv", "warnings", "wave", "weakref", "webbrowser", "winreg", "winsound", "wsgiref", "xml", "xmlrpc", "zipapp", "zipfile", "zipimport", "zlib", "zoneinfo"]);
+const SCHEMA = 1, CANAL = "stable";
+
+const $ = (id) => document.getElementById(id);
+const b64 = (buf) => { let s = ""; for (const x of new Uint8Array(buf)) s += String.fromCharCode(x); return btoa(s); };
+const deb64 = (s) => Uint8Array.from(atob(s.trim()), c => c.charCodeAt(0));
+const hex = (buf) => [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2, "0")).join("");
+const versionTuple = (v) => { if (!/^\d+(\.\d+){0,3}$/.test(v || "")) throw new Error(`version illisible : « ${v} »`); return v.split(".").map(Number); };
+const versionCmp = (a, b) => { const x = versionTuple(a), y = versionTuple(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d; } return 0; };
+const etat = (id, txt, cls) => { $(id).textContent = txt; $(id).className = cls || "petit"; };
+
+let clePrivee = null, clePubliqueB64 = null, cleId = null;
+let precedent = null;   // {brut, sig, data}
+let fichiers = [];      // [{nom, octets, sha256}]
+
+async function importerClePrivee(seed) {
+  const prefixe = Uint8Array.from([0x30,0x2e,0x02,0x01,0x00,0x30,0x05,0x06,0x03,0x2b,0x65,0x70,0x04,0x22,0x04,0x20]);
+  const pkcs8 = new Uint8Array(48); pkcs8.set(prefixe); pkcs8.set(seed, 16);
+  return crypto.subtle.importKey("pkcs8", pkcs8, { name: "Ed25519" }, true, ["sign"]);
+}
+async function clePubliqueDe(privee) {
+  const jwk = await crypto.subtle.exportKey("jwk", privee);
+  return b64(Uint8Array.from(atob(jwk.x.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((jwk.x.length + 3) % 4)), c => c.charCodeAt(0)));
+}
+async function verifier(brut, sigBrut) {
+  const sig = JSON.parse(new TextDecoder().decode(sigBrut));
+  const pub = CLES_PUBLIQUES[sig.cle];
+  if (!pub) throw new Error(`clé inconnue : ${sig.cle}`);
+  const k = await crypto.subtle.importKey("raw", deb64(pub), { name: "Ed25519" }, false, ["verify"]);
+  if (!(await crypto.subtle.verify({ name: "Ed25519" }, k, deb64(sig.signature), brut))) throw new Error("signature invalide");
+}
+
+$("cle").addEventListener("change", async (e) => {
+  clePrivee = null;
+  try {
+    const f = e.target.files[0]; if (!f) return;
+    const seed = deb64(await f.text());
+    if (seed.length !== 32) throw new Error("fichier de clé invalide");
+    clePrivee = await importerClePrivee(seed);
+    clePubliqueB64 = await clePubliqueDe(clePrivee);
+    cleId = Object.keys(CLES_PUBLIQUES).find(k => CLES_PUBLIQUES[k] === clePubliqueB64);
+    if (!cleId) { clePrivee = null; throw new Error("cette clé ne correspond à aucune clé connue du lanceur"); }
+    etat("etat_cle", `Clé « ${cleId} » reconnue.`, "ok");
+  } catch (err) { etat("etat_cle", "Erreur : " + err.message, "err"); }
+});
+
+$("prec").addEventListener("change", async (e) => {
+  precedent = null;
+  try {
+    const fs = [...e.target.files];
+    const j = fs.find(f => f.name.endsWith(".json")), s = fs.find(f => f.name.endsWith(".sig"));
+    if (!j || !s) throw new Error("choisissez les DEUX fichiers stable.json et stable.json.sig");
+    const brut = new Uint8Array(await j.arrayBuffer()), sig = new Uint8Array(await s.arrayBuffer());
+    await verifier(brut, sig);
+    const data = JSON.parse(new TextDecoder().decode(brut));
+    if (data.schema !== SCHEMA || data.canal !== CANAL) throw new Error("manifeste d'un autre schéma ou canal");
+    precedent = { brut, sig, data };
+    const ex = (data.exercices || []).map(x => `${x.id} ${x.version}${x.actif === false ? " (désactivé)" : ""}`).join(", ") || "aucun";
+    etat("etat_prec", `Publication n° ${data.sequence} authentique — ${ex}.`, "ok");
+    if (!$("vmin").value) $("vmin").value = (data.lanceur || {}).version_min || "1.0.0";
+  } catch (err) { etat("etat_prec", "Refusé : " + err.message, "err"); }
+});
+
+function importsHorsMoteur(source) {
+  const fautes = new Set();
+  const autorise = (nom) => {
+    const racine = nom.split(".")[0];
+    if (STDLIB.has(racine) || racine === "__future__" || nom === "psychopy") return true;
+    return MODULES_AUTORISES.some(a => nom === a || nom.startsWith(a + "."));
+  };
+  for (const ligne of source.split(/\r?\n/)) {
+    let m = ligne.match(/^\s*import\s+([\w., ]+?)\s*(#.*)?$/);
+    if (m) { for (const p of m[1].split(",")) { const n = p.trim().split(/\s+as\s+/)[0]; if (n && !autorise(n)) fautes.add(n); } continue; }
+    m = ligne.match(/^\s*from\s+([\w.]+)\s+import\s+\(?([\w, ]+)/);
+    if (m && !m[1].startsWith(".")) {
+      const noms = m[1] === "psychopy" ? m[2].split(",").map(x => "psychopy." + x.trim().split(/\s+as\s+/)[0]).filter(x => x !== "psychopy.") : [m[1]];
+      for (const n of noms) if (!autorise(n)) fautes.add(n);
+    }
+  }
+  return [...fautes];
+}
+
+$("fichiers").addEventListener("change", async (e) => {
+  fichiers = [];
+  try {
+    for (const f of e.target.files) {
+      const octets = new Uint8Array(await f.arrayBuffer());
+      fichiers.push({ nom: f.name, octets, sha256: hex(await crypto.subtle.digest("SHA-256", octets)) });
+    }
+    if (!fichiers.length) return;
+    const source = new TextDecoder().decode(fichiers[0].octets);
+    const v = source.match(/^SOFTWARE_VERSION\s*=\s*["']([\d.]+)["']/m);
+    if (v) $("version").value = v[1];
+    if (!$("moteur").value) $("moteur").value = MOTEUR;
+    const fautes = fichiers.flatMap(f => importsHorsMoteur(new TextDecoder().decode(f.octets)).map(n => `${f.nom} : ${n}`));
+    if (fautes.length) etat("etat_fichiers", "Imports hors moteur (publication refusée) : " + fautes.join(", "), "err");
+    else etat("etat_fichiers", `${fichiers.length} fichier(s) — version ${v ? v[1] : "?"} — imports conformes au moteur ${MOTEUR}.`, "ok");
+  } catch (err) { etat("etat_fichiers", "Erreur : " + err.message, "err"); }
+});
+
+async function ecrire(dossier, chemin, octets) {
+  const parties = chemin.split("/");
+  let d = dossier;
+  for (const p of parties.slice(0, -1)) d = await d.getDirectoryHandle(p, { create: true });
+  const f = await d.getFileHandle(parties[parties.length - 1], { create: true });
+  const w = await f.createWritable(); await w.write(octets); await w.close();
+}
+
+$("go").addEventListener("click", async () => {
+  const res = $("resultat"); res.innerHTML = "";
+  const erreur = (t) => { res.innerHTML = `<p class="err">${t}</p>`; };
+  try {
+    if (!clePrivee) return erreur("Étape 1 : chargez la clé principale.");
+    if (!fichiers.length) return erreur("Étape 3 : choisissez le fichier de l'exercice.");
+    if ($("etat_fichiers").className === "err") return erreur("Étape 3 : corrigez d'abord les imports hors moteur.");
+    const eid = $("eid").value.trim(), version = $("version").value.trim(), moteur = parseInt($("moteur").value, 10);
+    if (!/^[a-z0-9_]{1,32}$/.test(eid)) return erreur("Identifiant invalide (minuscules, chiffres, _).");
+    versionTuple(version);
+    if (!(moteur >= 1)) return erreur("Moteur requis invalide.");
+    if (moteur > MOTEUR) res.innerHTML = `<p class="avert">Attention : moteur ${moteur} > moteur du lanceur actuel (${MOTEUR}) : les postes l'ignoreront jusqu'au nouveau lanceur.</p>`;
+    const vmin = $("vmin").value.trim() || "1.0.0"; versionTuple(vmin);
+    const base = precedent ? precedent.data : { schema: SCHEMA, canal: CANAL, sequence: 0, exiger_authenticode: false, lanceur: { version_min: "1.0.0" }, exercices: [] };
+    const exercices = new Map((base.exercices || []).map(x => [x.id, x]));
+    const prec = exercices.get(eid);
+    if (prec && versionCmp(version, prec.version) <= 0)
+      return erreur(`Version ${version} ≤ version publiée ${prec.version} : augmentez SOFTWARE_VERSION (les postes comparent les numéros).`);
+    if (!precedent && !confirm("Aucune publication précédente fournie : ceci crée la PREMIÈRE publication (n° 1). Continuer ?")) return;
+    const dossierRel = `exercices/${eid}/${version}`;
+    exercices.set(eid, {
+      id: eid, nom: { fr: $("nom_fr").value.trim() || eid, en: $("nom_en").value.trim() || eid }, version,
+      moteur_requis: moteur, entree: fichiers[0].nom, actif: true,
+      fichiers: fichiers.map(f => ({ chemin: f.nom, url: `${dossierRel}/${f.nom}`, sha256: f.sha256, taille: f.octets.length })),
+    });
+    const lanceur = Object.assign({}, base.lanceur || {}, { version_min: vmin });
+    const manifeste = { schema: SCHEMA, canal: CANAL, sequence: (base.sequence || 0) + 1,
+      publie_le: new Date().toISOString().replace(/\.\d+Z$/, "Z"), exiger_authenticode: !!base.exiger_authenticode,
+      lanceur, exercices: [...exercices.values()].sort((a, b) => a.id.localeCompare(b.id)) };
+    const brut = new TextEncoder().encode(JSON.stringify(manifeste, null, 2));
+    const signature = b64(await crypto.subtle.sign({ name: "Ed25519" }, clePrivee, brut));
+    const sig = new TextEncoder().encode(JSON.stringify({ cle: cleId, signature }));
+    await verifier(brut, sig);   // contrôle final avec les clés du lanceur
+    if (!window.showDirectoryPicker) return erreur("Ce navigateur ne permet pas d'écrire dans un dossier : utilisez Microsoft Edge ou Google Chrome.");
+    const dossier = await window.showDirectoryPicker({ id: "logiciel", mode: "readwrite" });
+    for (const f of fichiers) await ecrire(dossier, `${dossierRel}/${f.nom}`, f.octets);
+    await ecrire(dossier, `canal/${CANAL}.json`, brut);
+    await ecrire(dossier, `canal/${CANAL}.json.sig`, sig);
+    res.innerHTML += `<p class="ok">Publication n° ${manifeste.sequence} prête dans « ${dossier.name} ».</p>
+      <p>À déposer dans le bucket <b>neurovisionsolidaire-portail</b>, sous <b>logiciel/</b>, dans CET ORDRE :</p>
+      <pre>1. ${dossierRel}/  (${fichiers.map(f => f.nom).join(", ")})
+2. canal/${CANAL}.json   puis   canal/${CANAL}.json.sig   (EN DERNIER)
+3. CloudFront : invalidation de  /logiciel/canal/*</pre>`;
+  } catch (err) {
+    if (err && err.name === "AbortError") return;
+    erreur("Erreur : " + (err && err.message ? err.message : err));
+  }
+});
+</script>
+</body>
+</html>

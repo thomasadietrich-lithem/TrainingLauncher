@@ -25,6 +25,12 @@ donnees\<id>\                config\ + session_data\ de chaque exercice — jama
 etat.json  journal_lanceur.log  temp\
 ```
 
+## Publier sans Python : `outils/Publier_NVS.html`
+Page à ouvrir dans Edge ou Chrome (générée par `outils/generer_page_publication.py` depuis `outils/modele_publier.html`,
+avec les clés publiques et le contrat moteur inscrits dedans). Elle vérifie la publication précédente, contrôle les
+imports, refuse une version non croissante, signe avec `principale.cle_privee` et écrit `canal/` + `exercices/` dans
+le dossier choisi (`A_DEPLOYER\logiciel`). Même format que `publier.py` (interopérables, testé de bout en bout).
+
 ## Publier (canal `logiciel/` du CloudFront du portail)
 ```
 python outils/verifier_imports.py Fba_Training_Tilt_Global.py
