@@ -558,12 +558,12 @@ class TestIdentite(unittest.TestCase):
         os.makedirs(os.path.join(tmp, "psychopy", "gui"))
         for f in ("psychopy/__init__.py", "psychopy/gui/__init__.py"):
             open(os.path.join(tmp, f), "w").close()
-        with open(os.path.join(tmp, "psychopy", "gui", "qtgui.py"), "w") as fh:
+        with open(os.path.join(tmp, "psychopy", "gui", "qtgui.py"), "w", encoding="utf-8") as fh:
             fh.write(self.FAUX_QTGUI)
         exercice = os.path.join(tmp, "exercice.py")
-        with open(exercice, "w") as fh:
+        with open(exercice, "w", encoding="utf-8") as fh:
             fh.write("import sys\n"
-                     "assert 'psychopy.gui.qtgui' not in sys.modules, 'importé trop tôt'\n"
+                     "assert 'psychopy.gui.qtgui' not in sys.modules, 'importe trop tot'\n"
                      "from psychopy.gui import qtgui\n"
                      "qtgui.ensureQtApp()\n"
                      "ic = qtgui.QtWidgets.QApplication.instance().icone\n"
