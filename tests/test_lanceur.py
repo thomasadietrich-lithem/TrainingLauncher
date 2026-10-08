@@ -531,5 +531,54 @@ class TestContratMoteur(Base):
         self.assertEqual(verifier([EXERCICE_REEL]), [])
 
 
+class TestIdentite(unittest.TestCase):
+    """L'icône NeuroVision est posée sur l'application Qt créée par PsychoPy, sans changer les imports de l'exercice."""
+
+    FAUX_QTGUI = (
+        "class _App:\n"
+        "    inst = None\n"
+        "    @classmethod\n"
+        "    def instance(cls):\n"
+        "        return cls.inst\n"
+        "    def setWindowIcon(self, icone):\n"
+        "        self.icone = icone\n"
+        "class QtWidgets:\n"
+        "    QApplication = _App\n"
+        "class QtGui:\n"
+        "    QIcon = staticmethod(lambda chemin: ('icone', chemin))\n"
+        "def ensureQtApp():\n"
+        "    if _App.inst is None:\n"
+        "        _App.inst = _App()\n"
+    )
+
+    def test_icone_posee_au_premier_dialogue(self):
+        import subprocess
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        os.makedirs(os.path.join(tmp, "psychopy", "gui"))
+        for f in ("psychopy/__init__.py", "psychopy/gui/__init__.py"):
+            open(os.path.join(tmp, f), "w").close()
+        with open(os.path.join(tmp, "psychopy", "gui", "qtgui.py"), "w") as fh:
+            fh.write(self.FAUX_QTGUI)
+        exercice = os.path.join(tmp, "exercice.py")
+        with open(exercice, "w") as fh:
+            fh.write("import sys\n"
+                     "assert 'psychopy.gui.qtgui' not in sys.modules, 'importé trop tôt'\n"
+                     "from psychopy.gui import qtgui\n"
+                     "qtgui.ensureQtApp()\n"
+                     "ic = qtgui.QtWidgets.QApplication.instance().icone\n"
+                     "assert ic[1].endswith('neurovision.ico'), ic\n"
+                     "raise SystemExit(7)\n")
+        env = dict(os.environ, PYTHONPATH=os.pathsep.join([RACINE_DEPOT, tmp]))
+        code = ("import sys; from nvs_lanceur.execution import executer_dans_ce_processus as e; "
+                f"sys.exit(e({exercice!r}))")
+        r = subprocess.run([sys.executable, "-c", code], env=env, capture_output=True, text=True, timeout=60)
+        self.assertEqual(r.returncode, 7, r.stderr)
+
+    def test_icone_trouvee(self):
+        from nvs_lanceur.identite import chemin_icone
+        self.assertTrue(chemin_icone())
+
+
 if __name__ == "__main__":
     unittest.main()

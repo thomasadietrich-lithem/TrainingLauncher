@@ -20,6 +20,7 @@ caches.update(["tkinter", "tkinter.ttk"])
 donnees = [
     (os.path.join(RACINE, "nvs_lanceur", "moteur.json"), "nvs_lanceur"),
     (os.path.join(RACINE, "nvs_lanceur", "cles_publiques.json"), "nvs_lanceur"),
+    (os.path.join(RACINE, "installeur", "neurovision.ico"), "nvs_lanceur"),   # icône des fenêtres (identite.py)
 ]
 donnees += collect_data_files("psychopy", excludes=["**/demos/**", "**/app/**", "**/tests/**", "**/experiment/**"])
 binaires = collect_dynamic_libs("psychtoolbox") + collect_dynamic_libs("pyglet")

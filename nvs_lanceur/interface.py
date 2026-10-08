@@ -101,6 +101,8 @@ class InterfaceTk(Interface):  # pragma: no cover - testée sur Windows (P3/P5)
         self.racine = tk.Tk()
         self.racine.withdraw()
         self.racine.title(self.t("titre"))
+        from .identite import appliquer_tk
+        appliquer_tk(self.racine)         # icône NeuroVision (œil) au lieu de la plume Tk, pour toutes les fenêtres
         self._prog = None
 
     def _fenetre(self):

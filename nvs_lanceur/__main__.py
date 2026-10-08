@@ -18,7 +18,11 @@ import sys
 def _auto_test(sortie=None) -> int:
     from . import MOTEUR, VERSION
     from .config import _dossier_ressources, charger_cles_publiques
+    from .identite import chemin_icone, preparer_qt
     erreurs = []
+    if not chemin_icone():
+        erreurs.append("icône neurovision.ico absente")
+    preparer_qt()                         # comme dans le processus enfant, avant tout import de l'exercice
     try:
         cles = charger_cles_publiques()
         print(f"clés publiques : {len(cles)}")
@@ -37,6 +41,12 @@ def _auto_test(sortie=None) -> int:
                 erreurs.append(f"import {mod} : {exc.__class__.__name__}: {exc}")
     except OSError as exc:
         erreurs.append(f"moteur.json : {exc}")
+    try:
+        from psychopy.gui import qtgui
+        if not getattr(qtgui.ensureQtApp, "_nvs_icone", False):
+            erreurs.append("icône des fenêtres de l'exercice non posée (psychopy.gui.qtgui.ensureQtApp)")
+    except Exception as exc:
+        erreurs.append(f"psychopy.gui.qtgui : {exc.__class__.__name__}: {exc}")
     lignes = [f"lanceur {VERSION}, moteur {MOTEUR}, python {sys.version.split()[0]}"]
     try:
         import psychopy

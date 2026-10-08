@@ -83,6 +83,11 @@ def executer_dans_ce_processus(entree: str) -> int:
     sys.argv = [entree]
     sys.path.insert(0, os.path.dirname(entree))
     try:
+        from .identite import preparer_qt
+        preparer_qt()                     # icône NeuroVision sur les fenêtres Qt de l'exercice (au mieux)
+    except Exception:
+        pass
+    try:
         runpy.run_path(entree, run_name="__main__")
     except SystemExit as exc:
         code = exc.code

@@ -53,6 +53,11 @@ P2 (logique du lanceur) : faite, 27 tests. P3 (fabrication Windows) : faite — 
 Windows » (tests sous Windows, PyInstaller dossier, auto-test du gelé, Inno Setup, installation/désinstallation
 silencieuses) ; installeur ~103 Mo (zip). À venir : P4 canal de publication signé, P5 pilote. Prérequis côté exercice : `docs/adaptation_exercice.md`.
 
+## Icône des fenêtres
+`nvs_lanceur/identite.py` : l'œil NeuroVision remplace l'icône générique en haut à gauche des fenêtres du lanceur (Tk)
+et de celles de l'exercice (boîtes de dialogue PsychoPy/Qt, posée par le lanceur dans le processus enfant au moment où
+PsychoPy crée son application Qt — aucun exercice n'a à s'en occuper). Vérifié par l'auto-test de fabrication.
+
 ## Création des clés
 Ouvrir `outils/Creer_cles_NVS.html` dans Edge ou Chrome (aucune installation, Python non requis) : crée principale +
 secours, les écrit dans le dossier choisi et affiche les clés publiques. Variante si Python est installé :
