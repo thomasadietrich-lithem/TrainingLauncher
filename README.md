@@ -1,8 +1,16 @@
 # TrainingLauncher — Lanceur NeuroVision Solidaire
 
-Socle installé chez le patient : il télécharge, **vérifie (signature Ed25519)** et exécute les exercices publiés
-par l'association, puis se tient à jour seul. Il ne contient aucun exercice. Spécification complète : chapitre 16 du
-document directeur du projet (« Module d'installation patient »).
+Socle installé chez l'utilisateur : il télécharge, **vérifie (signature Ed25519)** et exécute les exercices publiés
+par le projet, puis se tient à jour seul. Il ne contient aucun exercice. Spécification complète : chapitre 16 du
+document directeur du projet (« Module d'installation »).
+
+**Initiative individuelle de Thomas Dietrich.** NeuroVision Solidaire est un outil d'entraînement visuel ; ce n'est pas
+un dispositif médical. Distribution limitée aux personnes invitées.
+
+- [À propos / About](docs/A_PROPOS.md) — transparence, contenu de l'application
+- [Avertissements / Warnings](docs/AVERTISSEMENTS.md) — santé, limitation de responsabilité
+- [Confidentialité / Privacy](docs/CONFIDENTIALITE.md)
+- Licence : GPL-3.0-or-later ([`LICENSE`](LICENSE)) · composants tiers : [`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md)
 
 ## Principes
 - **Plusieurs exercices** : le manifeste en liste autant que nécessaire (aujourd'hui un seul, `tilt_global`).
