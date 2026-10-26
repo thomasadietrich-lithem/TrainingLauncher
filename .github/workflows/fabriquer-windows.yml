@@ -120,7 +120,12 @@ jobs:
           }
           # 1) paquet d'ESSAI (identité de test, signé ci-dessous par un certificat jetable)
           Fabriquer "NeuroVisionSolidaire.Essai" "CN=NeuroVision-Essai" "NeuroVision (essai)" "NeuroVision_essai.msix"
-          # 2) paquet STORE (non signé : le Store le signe) — seulement si l'identité Partner Center est renseignée
+          # 2) paquet STORE (non signé : le Store le signe) — identité Partner Center : variables du dépôt, sinon
+          #    msix/identite_store.json (valeurs publiques réservées le 26/10/2026)
+          if (-not $env:MSIX_NOM -and (Test-Path msix\identite_store.json)) {
+            $id = Get-Content msix\identite_store.json -Raw -Encoding utf8 | ConvertFrom-Json
+            $env:MSIX_NOM = $id.Name; $env:MSIX_EDITEUR = $id.Publisher; $env:MSIX_EDITEUR_AFFICHE = $id.PublisherDisplayName
+          }
           if ($env:MSIX_NOM -and $env:MSIX_EDITEUR) {
             Fabriquer $env:MSIX_NOM $env:MSIX_EDITEUR ($env:MSIX_EDITEUR_AFFICHE ?? "NeuroVision Solidaire") "NeuroVision_Store.msix"
             "::notice::paquet Store fabriqué pour $env:MSIX_NOM"
