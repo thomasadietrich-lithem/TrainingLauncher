@@ -28,7 +28,7 @@ from nvs_lanceur import reseau  # noqa: E402
 from nvs_lanceur.config import Reglages  # noqa: E402
 from nvs_lanceur.execution import CODE_INCOMPATIBLE, Resultat  # noqa: E402
 from nvs_lanceur.interface import Interface  # noqa: E402
-from nvs_lanceur.lanceur import (ERR_EXERCICE_KO, ERR_PREMIERE_INSTALLATION, OK, SORTIE_MAJ_LANCEUR,  # noqa: E402
+from nvs_lanceur.lanceur import (SORTIE_AVERTISSEMENT_REFUSE, ERR_EXERCICE_KO, ERR_PREMIERE_INSTALLATION, OK, SORTIE_MAJ_LANCEUR,  # noqa: E402
                                  Lanceur)
 from nvs_lanceur.manifeste import ManifesteInvalide, lire_manifeste  # noqa: E402
 from outils import publier  # noqa: E402
@@ -88,6 +88,14 @@ class InterfaceTest(Interface):
     def choisir(self, options):
         self.options_vues = list(options)
         return self.choix
+
+    accepte = True              # réponse à l'écran d'accueil (identifiant requis + avertissement santé)
+    accueils_vus = 0
+
+    def accueil(self, lignes, contact):
+        self.accueils_vus += 1
+        self.lignes_accueil = lignes
+        return self.accepte
 
     dossier = "defaut"          # "defaut" = Continuer ; None = Quitter ; sinon chemin choisi (ou liste de chemins)
     dossiers_proposes = None
@@ -529,6 +537,56 @@ class TestContratMoteur(Base):
     @unittest.skipUnless(os.path.exists(EXERCICE_REEL), "exercice réel non disponible")
     def test_exercice_reel_conforme_au_moteur(self):
         self.assertEqual(verifier([EXERCICE_REEL]), [])
+
+
+class TestAccueil(Base):
+    """Premier lancement : identifiant requis + avertissement santé, mémorisé avec l'empreinte du texte."""
+
+    def test_affiche_une_seule_fois(self):
+        self.publier()
+        ui = InterfaceTest()
+        self.assertEqual(self.lanceur(ui).demarrer(), OK)
+        self.assertEqual(ui.accueils_vus, 1)
+        ui2 = InterfaceTest()
+        self.assertEqual(self.lanceur(ui2).demarrer(), OK)
+        self.assertEqual(ui2.accueils_vus, 0)
+
+    def test_refus_arrete_tout(self):
+        self.publier()
+        ui = InterfaceTest()
+        ui.accepte = False
+        self.assertEqual(self.lanceur(ui).demarrer(), SORTIE_AVERTISSEMENT_REFUSE)
+        self.assertIsNone(ui.dossiers_proposes)                 # aucune autre question
+        self.assertEqual(self.seances(), [])                    # aucun exercice lancé
+        self.assertFalse(os.path.exists(os.path.join(self.racine, "accord_avertissements.json")))
+        ui2 = InterfaceTest()
+        self.lanceur(ui2).demarrer()
+        self.assertEqual(ui2.accueils_vus, 1)                   # redemandé au lancement suivant
+
+    def test_texte_modifie_redemande(self):
+        self.publier()
+        self.lanceur(InterfaceTest()).demarrer()
+        from nvs_lanceur import accueil
+        with open(os.path.join(self.racine, accueil.NOM_ACCORD), encoding="utf-8") as f:
+            accord = json.load(f)
+        accord["empreinte"] = "ancienne"
+        with open(os.path.join(self.racine, accueil.NOM_ACCORD), "w", encoding="utf-8") as f:
+            json.dump(accord, f)
+        ui = InterfaceTest()
+        self.lanceur(ui).demarrer()
+        self.assertEqual(ui.accueils_vus, 1)
+
+    def test_texte_fr_en_sans_markdown(self):
+        from nvs_lanceur import accueil
+        for langue, mot in (("fr", "Avertissement santé"), ("en", "Health warning")):
+            lignes, empreinte = accueil.charger(langue)
+            self.assertTrue(lignes and len(empreinte) == 64)
+            tout = "\n".join(t for _, t in lignes)
+            self.assertIn(mot, tout)
+            self.assertNotIn("**", tout)
+            self.assertNotIn("](", tout)
+            self.assertNotIn("English version below", tout)
+        self.assertNotIn("Health warning", "\n".join(t for _, t in accueil.charger("fr")[0]))
 
 
 class TestIdentite(unittest.TestCase):

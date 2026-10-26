@@ -9,8 +9,16 @@ from typing import List, Optional, Sequence, Tuple
 
 TEXTES = {
     "fr": {
-        "titre": "NeuroVision Solidaire",
+        "titre": "NeuroVision Solidaire Training Platform",
         "verif": "Recherche de mises à jour…",
+        "accueil_titre": "Bienvenue",
+        "accueil_identifiant": "Cette application nécessite un identifiant fourni par le projet NeuroVision Solidaire.",
+        "accueil_contact": "Vous n'avez pas d'identifiant ? Écrivez à {contact}.",
+        "accueil_sans_contact": "Vous n'avez pas d'identifiant ? Adressez-vous à la personne qui vous a proposé "
+                                "cet entraînement.",
+        "accueil_lire": "Avant de commencer, lisez l'avertissement santé ci-dessous.",
+        "accueil_case": "J'ai lu l'avertissement santé et la limitation de responsabilité, et je les accepte.",
+        "accueil_accepter": "Accepter et continuer",
         "maj_exercice": "Mise à jour de l'exercice en cours…\nMerci de patienter.",
         "maj_lanceur": "Installation d'une nouvelle version de NeuroVision…\nLe programme va redémarrer tout seul.",
         "choisir": "Quel exercice voulez-vous faire ?",
@@ -31,8 +39,15 @@ TEXTES = {
         "dossier_impossible": "Impossible d'écrire dans ce dossier. Choisissez-en un autre.",
     },
     "en": {
-        "titre": "NeuroVision Solidaire",
+        "titre": "NeuroVision Solidaire Training Platform",
         "verif": "Checking for updates…",
+        "accueil_titre": "Welcome",
+        "accueil_identifiant": "This application requires an ID provided by the NeuroVision Solidaire project.",
+        "accueil_contact": "You don't have an ID? Write to {contact}.",
+        "accueil_sans_contact": "You don't have an ID? Please ask the person who suggested this training to you.",
+        "accueil_lire": "Before you start, please read the health warning below.",
+        "accueil_case": "I have read the health warning and the disclaimer of liability, and I accept them.",
+        "accueil_accepter": "Accept and continue",
         "maj_exercice": "Updating the exercise…\nPlease wait.",
         "maj_lanceur": "Installing a new version of NeuroVision…\nThe program will restart by itself.",
         "choisir": "Which exercise would you like to do?",
@@ -86,6 +101,13 @@ class Interface:
     def choisir(self, options: Sequence[Tuple[str, str]]) -> Optional[str]:
         """options = [(id, nom affiché)] ; retourne l'id choisi ou None (quitter)."""
         return options[0][0] if options else None
+
+    def accueil(self, lignes, contact: str) -> bool:
+        """Premier lancement : identifiant requis + avertissement santé. True = accepté, False = quitter."""
+        print(self.t("accueil_identifiant"))
+        for _, texte in lignes:
+            print(texte)
+        return True
 
     def choisir_dossier(self, defaut: str) -> Optional[str]:
         """Premier lancement : confirme (ou change) le dossier des données. None = quitter."""
@@ -161,6 +183,53 @@ class InterfaceTk(Interface):  # pragma: no cover - testée sur Windows (P3/P5)
         w.grab_set()
         self.racine.wait_window(w)
         return choix[0]
+
+    def accueil(self, lignes, contact: str) -> bool:
+        self.fermer_progression()
+        accepte = [False]
+        w = self._fenetre()
+        self.tk.Label(w, text=self.t("accueil_titre"), font=("Segoe UI", 20, "bold"), bg="white",
+                      fg="#1D55AD").pack(pady=(0, 10))
+        self.tk.Label(w, text=self.t("accueil_identifiant"), font=("Segoe UI", 14, "bold"), bg="white",
+                      justify="center", wraplength=680).pack()
+        aide = self.t("accueil_contact", contact=contact) if contact else self.t("accueil_sans_contact")
+        self.tk.Label(w, text=aide, font=("Segoe UI", 12), bg="white", justify="center",
+                      wraplength=680).pack(pady=(4, 14))
+        self.tk.Label(w, text=self.t("accueil_lire"), font=("Segoe UI", 12), bg="white").pack(anchor="w")
+        cadre = self.tk.Frame(w, bg="white", highlightthickness=1, highlightbackground="#c8d3e6")
+        cadre.pack(fill="both", pady=(4, 10))
+        barre = self.tk.Scrollbar(cadre)
+        barre.pack(side="right", fill="y")
+        zone = self.tk.Text(cadre, width=78, height=15, wrap="word", font=("Segoe UI", 11), bg="#f7f9fc",
+                            relief="flat", padx=12, pady=10, yscrollcommand=barre.set, cursor="arrow")
+        zone.tag_configure("titre", font=("Segoe UI", 14, "bold"), foreground="#1D55AD", spacing3=6)
+        zone.tag_configure("section", font=("Segoe UI", 12, "bold"), spacing1=8, spacing3=4)
+        zone.tag_configure("texte", spacing3=4)
+        for style, texte in lignes:
+            zone.insert("end", texte + "\n", style)
+        zone.configure(state="disabled")
+        zone.pack(side="left", fill="both")
+        barre.configure(command=zone.yview)
+        coche = self.tk.BooleanVar(value=False)
+        bouton = self.tk.Button(w, text=self.t("accueil_accepter"), font=("Segoe UI", 15, "bold"), width=22,
+                                pady=6, bg="#1D55AD", fg="white", state="disabled")
+
+        def _coche():
+            bouton.configure(state="normal" if coche.get() else "disabled")
+
+        def _accepter():
+            accepte[0] = True
+            w.destroy()
+
+        self.tk.Checkbutton(w, text=self.t("accueil_case"), variable=coche, command=_coche, font=("Segoe UI", 12),
+                            bg="white", wraplength=660, justify="left").pack(anchor="w", pady=(0, 12))
+        bouton.configure(command=_accepter)
+        bouton.pack(pady=4)
+        self.tk.Button(w, text=self.t("quitter"), font=("Segoe UI", 12), command=w.destroy).pack(pady=(10, 0))
+        self._centrer(w)
+        w.grab_set()
+        self.racine.wait_window(w)
+        return accepte[0]
 
     def choisir_dossier(self, defaut: str) -> Optional[str]:
         from tkinter import filedialog

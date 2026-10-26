@@ -22,6 +22,11 @@ def _auto_test(sortie=None) -> int:
     erreurs = []
     if not chemin_icone():
         erreurs.append("icône neurovision.ico absente")
+    from .accueil import charger
+    for langue in ("fr", "en"):
+        lignes, _ = charger(langue)
+        if not lignes or len(lignes) < 10:
+            erreurs.append(f"avertissements ({langue}) absents ou incomplets")
     preparer_qt()                         # comme dans le processus enfant, avant tout import de l'exercice
     try:
         cles = charger_cles_publiques()

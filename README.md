@@ -61,6 +61,12 @@ P2 (logique du lanceur) : faite, 27 tests. P3 (fabrication Windows) : faite — 
 Windows » (tests sous Windows, PyInstaller dossier, auto-test du gelé, Inno Setup, installation/désinstallation
 silencieuses) ; installeur ~103 Mo (zip). À venir : P4 canal de publication signé, P5 pilote. Prérequis côté exercice : `docs/adaptation_exercice.md`.
 
+## Premier lancement (exigences Microsoft Store)
+`nvs_lanceur/accueil.py` : écran « identifiant requis » (avec l'adresse `CONTACT_EMAIL` de `config.py` si renseignée)
+et avertissement santé + limitation de responsabilité à accepter (case à cocher). Texte unique = `docs/AVERTISSEMENTS.md`,
+embarqué dans le lanceur ; acceptation mémorisée avec l'empreinte du texte (`accord_avertissements.json`) → redemandée
+si le texte change. Refus → sortie (code 41), rien d'autre n'est fait.
+
 ## Icône des fenêtres
 `nvs_lanceur/identite.py` : l'œil NeuroVision remplace l'icône générique en haut à gauche des fenêtres du lanceur (Tk)
 et de celles de l'exercice (boîtes de dialogue PsychoPy/Qt, posée par le lanceur dans le processus enfant au moment où

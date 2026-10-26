@@ -17,7 +17,8 @@ import tempfile
 from typing import Callable, List, Optional, Tuple
 
 from . import MOTEUR, VERSION
-from .config import TAILLE_MAX_FICHIER, TAILLE_MAX_INSTALLEUR, TAILLE_MAX_MANIFESTE, Reglages
+from . import accueil
+from .config import CONTACT_EMAIL, TAILLE_MAX_FICHIER, TAILLE_MAX_INSTALLEUR, TAILLE_MAX_MANIFESTE, Reglages
 from .depot import Depot
 from . import emplacement
 from .execution import Resultat, echec_au_demarrage
@@ -35,6 +36,7 @@ ERR_AUCUN_EXERCICE = 20
 ERR_PREMIERE_INSTALLATION = 21
 ERR_EXERCICE_KO = 30
 SORTIE_SANS_DOSSIER = 40
+SORTIE_AVERTISSEMENT_REFUSE = 41
 
 
 def configurer_journal(reglages: Reglages) -> None:
@@ -234,8 +236,25 @@ class Lanceur:
         return ERR_EXERCICE_KO
 
     # ------------------------------------------------------------ entrée
+    def accueil_premier_lancement(self) -> bool:
+        """Écran « identifiant requis » + avertissement santé, tant que le texte en vigueur n'a pas été accepté."""
+        lignes, empreinte = accueil.charger(self.ui.langue)
+        if lignes is None:                       # texte absent : défaut de fabrication (contrôlé par l'auto-test)
+            log.warning("texte des avertissements introuvable : écran d'accueil non affiché")
+            return True
+        if accueil.deja_accepte(self.r.racine, empreinte):
+            return True
+        if not self.ui.accueil(lignes, CONTACT_EMAIL):
+            return False
+        accueil.enregistrer(self.r.racine, empreinte, self.ui.langue)
+        log.info("avertissement santé accepté (empreinte %s)", empreinte[:12])
+        return True
+
     def demarrer(self) -> int:
         log.info("=== lanceur %s (moteur %s) ===", VERSION, MOTEUR)
+        if not self.accueil_premier_lancement():
+            log.info("avertissement santé non accepté : sortie")
+            return SORTIE_AVERTISSEMENT_REFUSE
         if not self.r.donnees:
             dossier = emplacement.resoudre(self.r.racine, self.ui.choisir_dossier)
             if dossier is None:

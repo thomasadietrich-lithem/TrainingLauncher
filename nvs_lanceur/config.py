@@ -20,6 +20,9 @@ TAILLE_MAX_INSTALLEUR = 1024 * 1024 * 1024
 # Un exercice qui s'arrête en erreur moins de DELAI_ECHEC_DEMARRAGE_S secondes après son lancement est considéré
 # comme « en échec au démarrage » → retour à la version précédente.
 DELAI_ECHEC_DEMARRAGE_S = 60.0
+# Adresse de contact affichée sur l'écran « identifiant requis » (premier lancement). Vide = « adressez-vous à la
+# personne qui vous a proposé cet entraînement ». À renseigner dès que l'adresse dédiée existe (dossier Store).
+CONTACT_EMAIL = ""
 
 NOM_DOSSIER = "NeuroVisionSolidaire"
 
