@@ -2,7 +2,7 @@
 
 *Version du 12/10/2026 — English version below.*
 
-**Responsable du traitement** : Thomas Dietrich, initiative individuelle NeuroVision Solidaire. Contact : [adresse e-mail de contact].
+**Responsable du traitement** : Thomas Dietrich, initiative individuelle NeuroVision Solidaire. Contact : ReseauRegardSolidaire@gmail.com.
 
 ## 1. Ce qui ne quitte jamais votre ordinateur
 
@@ -40,7 +40,7 @@ Le projet NeuroVision Solidaire uniquement. Amazon Web Services intervient comme
 
 ## 8. Vos droits
 
-Accès, rectification, effacement, limitation, portabilité, opposition, retrait du consentement : écrivez à [adresse e-mail de contact] en indiquant votre identifiant. Vous pouvez aussi saisir la CNIL (<https://www.cnil.fr>).
+Accès, rectification, effacement, limitation, portabilité, opposition, retrait du consentement : écrivez à ReseauRegardSolidaire@gmail.com en indiquant votre identifiant. Vous pouvez aussi saisir la CNIL (<https://www.cnil.fr>).
 
 ## 9. Mises à jour
 
@@ -54,7 +54,7 @@ Voir aussi : [À propos](A_PROPOS.md) · [Avertissements](AVERTISSEMENTS.md)
 
 *Version of 10/12/2026.*
 
-**Controller**: Thomas Dietrich, NeuroVision Solidaire individual initiative. Contact: [contact email address].
+**Controller**: Thomas Dietrich, NeuroVision Solidaire individual initiative. Contact: ReseauRegardSolidaire@gmail.com.
 
 ## 1. What never leaves your computer
 
@@ -92,7 +92,7 @@ The NeuroVision Solidaire project only. Amazon Web Services acts as hosting proc
 
 ## 8. Your rights
 
-Access, rectification, erasure, restriction, portability, objection, withdrawal of consent: write to [contact email address] stating your ID. You may also complain to the French data protection authority, CNIL (<https://www.cnil.fr>).
+Access, rectification, erasure, restriction, portability, objection, withdrawal of consent: write to ReseauRegardSolidaire@gmail.com stating your ID. You may also complain to the French data protection authority, CNIL (<https://www.cnil.fr>).
 
 ## 9. Updates
 
