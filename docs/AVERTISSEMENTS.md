@@ -2,6 +2,10 @@
 
 *English version below.*
 
+## Projet personnel, sans supervision médicale
+
+NeuroVision Solidaire est un projet personnel de Thomas Dietrich. **À ce jour, il ne bénéficie d'aucune supervision médicale** : aucun médecin ni établissement de santé n'encadre ce projet, ne valide les exercices ni ne suit votre utilisation du logiciel. Cet entraînement n'a fait l'objet d'aucune étude clinique. Si vous êtes suivi pour un trouble de la vision ou un trouble neurologique, parlez-en à votre médecin avant de l'utiliser.
+
 ## Avertissement santé
 
 1. **Pas un dispositif médical.** NeuroVision Solidaire est un outil d'entraînement visuel. Ce n'est pas un dispositif médical au sens du règlement (UE) 2017/745 : il ne pose aucun diagnostic, ne mesure pas le champ visuel et n'est destiné ni à prévenir, ni à suivre, ni à traiter une maladie.
@@ -27,6 +31,10 @@ Voir aussi : [À propos](A_PROPOS.md) · [Politique de confidentialité](CONFIDE
 ---
 
 # Warnings — NeuroVision Solidaire
+
+## Personal project, without medical supervision
+
+NeuroVision Solidaire is a personal project of Thomas Dietrich. **To date, it has no medical supervision**: no physician or healthcare institution oversees this project, validates the exercises or follows your use of the software. This training has not been the subject of any clinical study. If you are being followed for a visual or neurological condition, talk to your doctor before using it.
 
 ## Health warning
 

@@ -22,7 +22,7 @@ TAILLE_MAX_INSTALLEUR = 1024 * 1024 * 1024
 DELAI_ECHEC_DEMARRAGE_S = 60.0
 # Adresse de contact affichée sur l'écran « identifiant requis » (premier lancement). Vide = « adressez-vous à la
 # personne qui vous a proposé cet entraînement ». À renseigner dès que l'adresse dédiée existe (dossier Store).
-CONTACT_EMAIL = "ReseauRegardSolidaire@gmail.com"   # provisoire (Thomas, 26/10)
+CONTACT_EMAIL = "thomas.a.dietrich@gmail.com"   # contact définitif (Thomas, 03/11/2026)
 
 NOM_DOSSIER = "NeuroVisionSolidaire"
 

@@ -22,6 +22,8 @@ donnees = [
     (os.path.join(RACINE, "nvs_lanceur", "cles_publiques.json"), "nvs_lanceur"),
     (os.path.join(RACINE, "installeur", "neurovision.ico"), "nvs_lanceur"),   # icône des fenêtres (identite.py)
     (os.path.join(RACINE, "docs", "AVERTISSEMENTS.md"), "nvs_lanceur"),     # avertissement santé (accueil.py)
+    (os.path.join(RACINE, "LICENSE"), "."),                                   # licence GPL-3.0 (obligation de la GPL)
+    (os.path.join(RACINE, "THIRD_PARTY_LICENSES.md"), "."),                  # composants tiers et licences
 ]
 donnees += collect_data_files("psychopy", excludes=["**/demos/**", "**/app/**", "**/tests/**", "**/experiment/**"])
 binaires = collect_dynamic_libs("psychtoolbox") + collect_dynamic_libs("pyglet")

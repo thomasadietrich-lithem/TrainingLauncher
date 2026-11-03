@@ -6,6 +6,8 @@
 
 NeuroVision Solidaire est l'initiative personnelle et bénévole de Thomas Dietrich. L'association du même nom est en cours de création. Aucune entreprise, aucun laboratoire, aucun établissement de santé ni aucun financeur ne publie ou ne garantit ce logiciel. Thomas Dietrich en est l'éditeur et le seul responsable.
 
+**À ce jour, le projet ne bénéficie d'aucune supervision médicale** : aucun médecin ni établissement de santé ne l'encadre. Contact : thomas.a.dietrich@gmail.com.
+
 ## Un outil d'entraînement, pas un dispositif médical
 
 NeuroVision Solidaire est un outil d'entraînement visuel. Il n'est pas un dispositif médical au sens du règlement (UE) 2017/745 : il n'est destiné ni au diagnostic, ni à la prévention, ni au suivi, ni au traitement d'une maladie.
@@ -61,6 +63,8 @@ Voir aussi : [Avertissements](AVERTISSEMENTS.md) · [Politique de confidentialit
 ## An individual initiative
 
 NeuroVision Solidaire is the personal, volunteer initiative of Thomas Dietrich. The association of the same name is being set up. No company, laboratory, healthcare institution or funder publishes or guarantees this software. Thomas Dietrich is its publisher and solely responsible for it.
+
+**To date, the project has no medical supervision**: no physician or healthcare institution oversees it. Contact: thomas.a.dietrich@gmail.com.
 
 ## A training tool, not a medical device
 
