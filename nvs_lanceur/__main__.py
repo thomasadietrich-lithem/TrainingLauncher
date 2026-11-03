@@ -28,6 +28,11 @@ def _auto_test(sortie=None) -> int:
         lignes, _ = charger(langue)
         if not lignes or len(lignes) < 10:
             erreurs.append(f"avertissements ({langue}) absents ou incomplets")
+    from .interface_qt import chemin_logo, qt_disponible
+    if not qt_disponible():
+        erreurs.append("PyQt indisponible : fenêtres du lanceur en mode de secours (Tk)")
+    if not chemin_logo():
+        erreurs.append("logo.png absent")
     preparer_qt()                         # comme dans le processus enfant, avant tout import de l'exercice
     try:
         cles = charger_cles_publiques()

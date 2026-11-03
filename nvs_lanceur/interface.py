@@ -1,4 +1,4 @@
-"""Fenêtres minimales du lanceur (Tk, présent dans Python Windows). Grand texte, gros boutons, FR/EN.
+"""Textes FR/EN et fenêtres de secours du lanceur (Tk) ; les fenêtres normales sont en Qt (interface_qt.py)..
 Les tests utilisent une interface factice ; ici, aucune logique métier."""
 
 from __future__ import annotations
@@ -38,6 +38,7 @@ TEXTES = {
         "dossier_autre": "Choisir un autre dossier…",
         "dossier_impossible": "Impossible d'écrire dans ce dossier. Choisissez-en un autre.",
         "nom_langue": "Français",
+        "exercice": "Exercice",
     },
     "en": {
         "titre": "NeuroVision Solidaire Training Platform",
@@ -67,13 +68,14 @@ TEXTES = {
         "dossier_autre": "Choose another folder…",
         "dossier_impossible": "This folder cannot be written to. Please choose another one.",
         "nom_langue": "English",
+        "exercice": "Exercise",
     },
 }
 
 # Écran de choix de la langue (premier lancement) : bilingue, avant que la langue soit connue.
-LANGUE_TITRE = "Langue · Language"
+LANGUE_TITRE = "Langue / Language"
 LANGUE_TEXTE = "Choisissez la langue de NeuroVision.\nChoose the language of NeuroVision."
-LANGUE_QUITTER = "Quitter · Quit"
+LANGUE_QUITTER = "Quitter / Quit"
 
 # Aspect commun des fenêtres (celui de « Où ranger vos séances ? »).
 BLEU = "#1D55AD"
@@ -341,6 +343,12 @@ class InterfaceTk(Interface):  # pragma: no cover - testée sur Windows (P3/P5)
 
 
 def interface_par_defaut() -> Interface:
+    """Qt d'abord (mêmes fenêtres que l'exercice), puis Tk, puis console."""
+    try:
+        from .interface_qt import InterfaceQt
+        return InterfaceQt()
+    except Exception:
+        pass
     try:
         return InterfaceTk()
     except Exception:

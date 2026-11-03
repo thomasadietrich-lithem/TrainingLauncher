@@ -671,6 +671,78 @@ class TestLangue(Base):
         self.assertEqual(preferences.lire_langue(self.racine), "en")
 
 
+class TestFenetresQt(unittest.TestCase):
+    """Fenêtres Qt du lanceur (mêmes que celles de l'exercice), affichées hors écran et fermées automatiquement."""
+
+    @classmethod
+    def setUpClass(cls):
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        from nvs_lanceur import interface_qt
+        if not interface_qt.qt_disponible():
+            raise unittest.SkipTest("PyQt absent")
+        cls.qt = interface_qt
+        cls.ui = interface_qt.InterfaceQt("fr")
+
+    def repondre(self, action, regler=None):
+        W = self.qt.QtWidgets
+
+        def _():
+            w = self.ui.app.activeModalWidget()
+            if w is None:
+                return self.qt.QtCore.QTimer.singleShot(50, _)
+            if regler:
+                regler(w)
+            for b in w.findChildren(W.QPushButton):
+                if b.text() == action and b.isEnabled():
+                    b.click()
+                    return
+            w.reject()                                   # bouton absent ou inactif : la fenêtre est fermée
+        self.qt.QtCore.QTimer.singleShot(50, _)
+
+    def test_langue(self):
+        self.repondre("Continuer / Continue", lambda w: w.findChildren(self.qt.QtWidgets.QComboBox)[0].setCurrentIndex(1))
+        self.assertEqual(self.ui.choisir_langue("fr"), "en")
+        self.repondre("Continuer / Continue")
+        self.assertEqual(self.ui.choisir_langue("en"), "en")       # présélection en tête
+        self.repondre("Quitter / Quit")
+        self.assertIsNone(self.ui.choisir_langue("fr"))
+
+    def test_accueil_case_obligatoire(self):
+        from nvs_lanceur import accueil
+        lignes, _ = accueil.charger("fr")
+        vus = {}
+
+        def sans_cocher(w):
+            vus["actif"] = [b.isEnabled() for b in w.findChildren(self.qt.QtWidgets.QPushButton)
+                            if b.text() == "Accepter et continuer"][0]
+        self.repondre("Accepter et continuer", sans_cocher)
+        self.assertFalse(self.ui.accueil(lignes, "x@y"))              # bouton inactif : clic sans effet → fermé
+        self.assertFalse(vus["actif"])
+        self.repondre("Accepter et continuer", lambda w: w.findChildren(self.qt.QtWidgets.QCheckBox)[0].setChecked(True))
+        self.assertTrue(self.ui.accueil(lignes, "x@y"))
+        self.repondre("Quitter")
+        self.assertFalse(self.ui.accueil(lignes, ""))
+
+    def test_dossier_et_choix(self):
+        self.repondre("Continuer")
+        self.assertEqual(self.ui.choisir_dossier("/tmp/NeuroVision"), "/tmp/NeuroVision")
+        self.repondre("Quitter")
+        self.assertIsNone(self.ui.choisir_dossier("/tmp/NeuroVision"))
+        self.repondre("Continuer", lambda w: w.findChildren(self.qt.QtWidgets.QComboBox)[0].setCurrentIndex(1))
+        self.assertEqual(self.ui.choisir([("a", "A"), ("b", "B")]), "b")
+        self.repondre("OK")
+        self.ui.message("echec_total", code="L30")
+        self.ui.progression("verif")
+        self.ui.fermer_progression()
+
+    def test_texte_avertissements(self):
+        from nvs_lanceur import accueil
+        h = self.qt.html_avertissements(accueil.charger("en")[0])
+        self.assertIn("<b>Health warning</b>", h)
+        self.assertNotIn("Avertissements", h)
+        self.assertIsNotNone(self.qt.chemin_logo())
+
+
 class TestIdentite(unittest.TestCase):
     """L'icône NeuroVision est posée sur l'application Qt créée par PsychoPy, sans changer les imports de l'exercice."""
 
