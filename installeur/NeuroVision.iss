@@ -71,7 +71,8 @@ Name: "{userprograms}\NeuroVision Solidaire"; Filename: "{app}\NeuroVision.exe";
 
 [Run]
 ; installation normale : case « Lancer NeuroVision maintenant » sur la dernière page
-Filename: "{app}\NeuroVision.exe"; Description: "{cm:Lancer}"; Flags: nowait postinstall skipifsilent
+; --langue={language} : la langue choisie pour l'installeur est présélectionnée au premier lancement
+Filename: "{app}\NeuroVision.exe"; Parameters: "--langue={language}"; Description: "{cm:Lancer}"; Flags: nowait postinstall skipifsilent
 ; auto-mise à jour silencieuse demandée par le lanceur : relance automatique
 Filename: "{app}\NeuroVision.exe"; Flags: nowait; Check: RelancerDemande
 

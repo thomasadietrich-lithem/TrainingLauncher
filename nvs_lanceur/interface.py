@@ -16,7 +16,7 @@ TEXTES = {
         "accueil_contact": "Vous n'avez pas d'identifiant ? Écrivez à {contact}.",
         "accueil_sans_contact": "Vous n'avez pas d'identifiant ? Adressez-vous à la personne qui vous a proposé "
                                 "cet entraînement.",
-        "accueil_lire": "Avant de commencer, lisez l'avertissement santé ci-dessous.",
+        "accueil_lire": "Avant de commencer, lisez attentivement ce texte :",
         "accueil_case": "J'ai lu l'avertissement santé et la limitation de responsabilité, et je les accepte.",
         "accueil_accepter": "Accepter et continuer",
         "maj_exercice": "Mise à jour de l'exercice en cours…\nMerci de patienter.",
@@ -37,6 +37,7 @@ TEXTES = {
         "dossier_continuer": "Continuer",
         "dossier_autre": "Choisir un autre dossier…",
         "dossier_impossible": "Impossible d'écrire dans ce dossier. Choisissez-en un autre.",
+        "nom_langue": "Français",
     },
     "en": {
         "titre": "NeuroVision Solidaire Training Platform",
@@ -45,7 +46,7 @@ TEXTES = {
         "accueil_identifiant": "This application requires an ID provided by the NeuroVision Solidaire project.",
         "accueil_contact": "You don't have an ID? Write to {contact}.",
         "accueil_sans_contact": "You don't have an ID? Please ask the person who suggested this training to you.",
-        "accueil_lire": "Before you start, please read the health warning below.",
+        "accueil_lire": "Before you start, please read this text carefully:",
         "accueil_case": "I have read the health warning and the disclaimer of liability, and I accept them.",
         "accueil_accepter": "Accept and continue",
         "maj_exercice": "Updating the exercise…\nPlease wait.",
@@ -65,8 +66,22 @@ TEXTES = {
         "dossier_continuer": "Continue",
         "dossier_autre": "Choose another folder…",
         "dossier_impossible": "This folder cannot be written to. Please choose another one.",
+        "nom_langue": "English",
     },
 }
+
+# Écran de choix de la langue (premier lancement) : bilingue, avant que la langue soit connue.
+LANGUE_TITRE = "Langue · Language"
+LANGUE_TEXTE = "Choisissez la langue de NeuroVision.\nChoose the language of NeuroVision."
+LANGUE_QUITTER = "Quitter · Quit"
+
+# Aspect commun des fenêtres (celui de « Où ranger vos séances ? »).
+BLEU = "#1D55AD"
+BLEU_FONCE = "#16458f"
+BLEU_INACTIF = "#a9bde0"
+BANDE = "#eef3fb"
+GRIS_TEXTE = "#4a5568"
+LARGEUR = 640                                 # largeur du contenu, en pixels
 
 
 def langue_systeme() -> str:
@@ -88,6 +103,14 @@ class Interface:
 
     def t(self, cle: str, **kw) -> str:
         return TEXTES[self.langue][cle].format(**kw)
+
+    def definir_langue(self, langue: str) -> None:
+        if langue in TEXTES:
+            self.langue = langue
+
+    def choisir_langue(self, defaut: str) -> Optional[str]:
+        """Premier lancement : langue de l'application ("fr" / "en"). None = quitter."""
+        return defaut if defaut in TEXTES else "fr"
 
     def progression(self, cle: str) -> None:
         print(self.t(cle))
@@ -184,48 +207,102 @@ class InterfaceTk(Interface):  # pragma: no cover - testée sur Windows (P3/P5)
         self.racine.wait_window(w)
         return choix[0]
 
+    # ------------------------------------------------ éléments communs
+    def _titre(self, w, texte):
+        self.tk.Label(w, text=texte, font=("Segoe UI", 18, "bold"), bg="white", fg=BLEU,
+                      justify="center").pack(pady=(0, 12))
+
+    def _texte(self, w, texte, taille=14, couleur="black", pady=(0, 12)):
+        self.tk.Label(w, text=texte, font=("Segoe UI", taille), bg="white", fg=couleur, justify="center",
+                      wraplength=LARGEUR).pack(pady=pady)
+
+    def _bouton_principal(self, w, texte, commande, largeur=18):
+        b = self.tk.Button(w, text=texte, font=("Segoe UI", 16, "bold"), width=largeur, pady=6, bg=BLEU, fg="white",
+                           activebackground=BLEU_FONCE, activeforeground="white", disabledforeground="white",
+                           cursor="hand2", command=commande)
+        b.pack(pady=4)
+        return b
+
+    def _bouton_quitter(self, w, texte=None):
+        self.tk.Button(w, text=texte or self.t("quitter"), font=("Segoe UI", 12),
+                       command=w.destroy).pack(pady=(14, 0))
+
+    def definir_langue(self, langue: str) -> None:
+        super().definir_langue(langue)
+        self.racine.title(self.t("titre"))
+
+    # ------------------------------------------------ écrans
+    def choisir_langue(self, defaut: str) -> Optional[str]:
+        self.fermer_progression()
+        choix: List[Optional[str]] = [None]
+        w = self._fenetre()
+        self._titre(w, LANGUE_TITRE)
+        self._texte(w, LANGUE_TEXTE, pady=(0, 20))
+        ordre = [defaut] + [l for l in ("fr", "en") if l != defaut] if defaut in TEXTES else ["fr", "en"]
+        premier = None
+        for code in ordre:
+            def _pris(c=code):
+                choix[0] = c
+                w.destroy()
+            b = self._bouton_principal(w, TEXTES[code]["nom_langue"], _pris)
+            premier = premier or b
+        self._bouton_quitter(w, LANGUE_QUITTER)
+        w.bind("<Return>", lambda _e: premier.invoke())
+        self._centrer(w)
+        w.grab_set()
+        premier.focus_set()
+        self.racine.wait_window(w)
+        return choix[0]
+
     def accueil(self, lignes, contact: str) -> bool:
         self.fermer_progression()
         accepte = [False]
         w = self._fenetre()
-        self.tk.Label(w, text=self.t("accueil_titre"), font=("Segoe UI", 20, "bold"), bg="white",
-                      fg="#1D55AD").pack(pady=(0, 10))
-        self.tk.Label(w, text=self.t("accueil_identifiant"), font=("Segoe UI", 14, "bold"), bg="white",
-                      justify="center", wraplength=680).pack()
+        self._titre(w, self.t("accueil_titre"))
+        self._texte(w, self.t("accueil_identifiant"), pady=(0, 4))
         aide = self.t("accueil_contact", contact=contact) if contact else self.t("accueil_sans_contact")
-        self.tk.Label(w, text=aide, font=("Segoe UI", 12), bg="white", justify="center",
-                      wraplength=680).pack(pady=(4, 14))
-        self.tk.Label(w, text=self.t("accueil_lire"), font=("Segoe UI", 12), bg="white").pack(anchor="w")
-        cadre = self.tk.Frame(w, bg="white", highlightthickness=1, highlightbackground="#c8d3e6")
-        cadre.pack(fill="both", pady=(4, 10))
-        barre = self.tk.Scrollbar(cadre)
+        self._texte(w, aide, taille=12, couleur=GRIS_TEXTE, pady=(0, 16))
+        self._texte(w, self.t("accueil_lire"), taille=13, pady=(0, 8))
+        # Le texte des avertissements, dans la même bande claire que le chemin du dossier (sans cadre ni relief).
+        bande = self.tk.Frame(w, bg=BANDE, width=LARGEUR, height=280)
+        bande.pack_propagate(False)
+        bande.pack(pady=(0, 16))
+        barre = self.tk.Scrollbar(bande)
         barre.pack(side="right", fill="y")
-        zone = self.tk.Text(cadre, width=78, height=15, wrap="word", font=("Segoe UI", 11), bg="#f7f9fc",
-                            relief="flat", padx=12, pady=10, yscrollcommand=barre.set, cursor="arrow")
-        zone.tag_configure("titre", font=("Segoe UI", 14, "bold"), foreground="#1D55AD", spacing3=6)
-        zone.tag_configure("section", font=("Segoe UI", 12, "bold"), spacing1=8, spacing3=4)
-        zone.tag_configure("texte", spacing3=4)
+        zone = self.tk.Text(bande, wrap="word", font=("Segoe UI", 11), bg=BANDE, fg="black", relief="flat", bd=0,
+                            highlightthickness=0, padx=16, pady=12, spacing2=2, yscrollcommand=barre.set,
+                            cursor="arrow")
+        zone.tag_configure("section", font=("Segoe UI", 12, "bold"), foreground=BLEU, spacing1=10, spacing3=4)
+        zone.tag_configure("texte", spacing3=6)
+        debut = True
         for style, texte in lignes:
+            if style == "titre":                 # « Avertissements — NeuroVision Solidaire » : déjà dit par la fenêtre
+                continue
+            if debut and style == "section":
+                zone.tag_configure("section1", font=("Segoe UI", 12, "bold"), foreground=BLEU, spacing3=4)
+                style = "section1"
+            debut = False
             zone.insert("end", texte + "\n", style)
         zone.configure(state="disabled")
-        zone.pack(side="left", fill="both")
+        zone.pack(side="left", fill="both", expand=True)
         barre.configure(command=zone.yview)
         coche = self.tk.BooleanVar(value=False)
-        bouton = self.tk.Button(w, text=self.t("accueil_accepter"), font=("Segoe UI", 15, "bold"), width=22,
-                                pady=6, bg="#1D55AD", fg="white", state="disabled")
 
         def _coche():
-            bouton.configure(state="normal" if coche.get() else "disabled")
+            bouton.configure(state="normal" if coche.get() else "disabled",
+                             bg=BLEU if coche.get() else BLEU_INACTIF,
+                             cursor="hand2" if coche.get() else "arrow")
 
         def _accepter():
             accepte[0] = True
             w.destroy()
 
-        self.tk.Checkbutton(w, text=self.t("accueil_case"), variable=coche, command=_coche, font=("Segoe UI", 12),
-                            bg="white", wraplength=660, justify="left").pack(anchor="w", pady=(0, 12))
-        bouton.configure(command=_accepter)
-        bouton.pack(pady=4)
-        self.tk.Button(w, text=self.t("quitter"), font=("Segoe UI", 12), command=w.destroy).pack(pady=(10, 0))
+        self.tk.Checkbutton(w, text=self.t("accueil_case"), variable=coche, command=_coche, font=("Segoe UI", 13),
+                            bg="white", activebackground="white", highlightthickness=0, bd=0,
+                            wraplength=LARGEUR - 40, justify="left", cursor="hand2").pack(pady=(0, 16))
+        bouton = self._bouton_principal(w, self.t("accueil_accepter"), _accepter, largeur=22)
+        _coche()
+        self._bouton_quitter(w)
         self._centrer(w)
         w.grab_set()
         self.racine.wait_window(w)
@@ -237,12 +314,10 @@ class InterfaceTk(Interface):  # pragma: no cover - testée sur Windows (P3/P5)
         resultat: List[Optional[str]] = [None]
         courant = [defaut]
         w = self._fenetre()
-        self.tk.Label(w, text=self.t("dossier_titre"), font=("Segoe UI", 18, "bold"), bg="white",
-                      fg="#1D55AD").pack(pady=(0, 12))
-        self.tk.Label(w, text=self.t("dossier_texte"), font=("Segoe UI", 14), bg="white", justify="center",
-                      wraplength=640).pack(pady=(0, 12))
-        chemin = self.tk.Label(w, text=defaut, font=("Segoe UI", 13, "bold"), bg="#eef3fb", padx=12, pady=8,
-                               wraplength=640)
+        self._titre(w, self.t("dossier_titre"))
+        self._texte(w, self.t("dossier_texte"))
+        chemin = self.tk.Label(w, text=defaut, font=("Segoe UI", 13, "bold"), bg=BANDE, padx=12, pady=8,
+                               wraplength=LARGEUR)
         chemin.pack(pady=(0, 18), fill="x")
 
         def _continuer():
@@ -256,10 +331,9 @@ class InterfaceTk(Interface):  # pragma: no cover - testée sur Windows (P3/P5)
                 courant[0] = os.path.normpath(d)
                 chemin.configure(text=courant[0])
 
-        self.tk.Button(w, text=self.t("dossier_continuer"), font=("Segoe UI", 16, "bold"), width=18, pady=6,
-                       bg="#1D55AD", fg="white", command=_continuer).pack(pady=4)
+        self._bouton_principal(w, self.t("dossier_continuer"), _continuer)
         self.tk.Button(w, text=self.t("dossier_autre"), font=("Segoe UI", 13), command=_autre).pack(pady=4)
-        self.tk.Button(w, text=self.t("quitter"), font=("Segoe UI", 12), command=w.destroy).pack(pady=(14, 0))
+        self._bouton_quitter(w)
         self._centrer(w)
         w.grab_set()
         self.racine.wait_window(w)

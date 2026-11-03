@@ -21,6 +21,7 @@ from . import accueil
 from .config import CONTACT_EMAIL, TAILLE_MAX_FICHIER, TAILLE_MAX_INSTALLEUR, TAILLE_MAX_MANIFESTE, Reglages
 from .depot import Depot
 from . import emplacement
+from . import preferences
 from .execution import Resultat, echec_au_demarrage
 from . import execution
 from .interface import Interface
@@ -37,6 +38,7 @@ ERR_PREMIERE_INSTALLATION = 21
 ERR_EXERCICE_KO = 30
 SORTIE_SANS_DOSSIER = 40
 SORTIE_AVERTISSEMENT_REFUSE = 41
+SORTIE_SANS_LANGUE = 42
 
 
 def configurer_journal(reglages: Reglages) -> None:
@@ -87,11 +89,13 @@ class Lanceur:
                  executer: Optional[Callable[[str, str, str, str], Resultat]] = None,
                  installer_lanceur: Callable[[str], None] = lancer_installeur,
                  verifier_authenticode: Callable[[str], bool] = signature_authenticode_valide,
-                 est_msix: Callable[[], bool] = est_paquet_msix):
+                 est_msix: Callable[[], bool] = est_paquet_msix,
+                 langue_proposee: Optional[str] = None):
         self.r = reglages
         self.ui = interface
+        self.langue_proposee = langue_proposee          # langue de l'installeur (--langue=…), simple présélection
         self.executer = executer or (lambda entree, donnees, eid, v: execution.lancer(
-            entree, donnees, eid, v, journal_enfant=reglages.fichier_journal_enfant))
+            entree, donnees, eid, v, journal_enfant=reglages.fichier_journal_enfant, langue=self.ui.langue))
         self.installer_lanceur = installer_lanceur
         self.verifier_authenticode = verifier_authenticode
         self.est_msix = est_msix
@@ -236,6 +240,22 @@ class Lanceur:
         return ERR_EXERCICE_KO
 
     # ------------------------------------------------------------ entrée
+    def choisir_langue(self) -> bool:
+        """Premier lancement : français ou anglais (présélection : langue de l'installeur, sinon de Windows).
+        Le choix est mémorisé ; les écrans suivants et l'exercice (NVS_LANGUE) le suivent."""
+        langue = preferences.lire_langue(self.r.racine)
+        if langue is None:
+            defaut = self.langue_proposee if self.langue_proposee in preferences.LANGUES else self.ui.langue
+            langue = self.ui.choisir_langue(defaut)
+            if langue not in preferences.LANGUES:
+                return False
+            preferences.enregistrer_langue(self.r.racine, langue)
+            log.info("langue choisie : %s", langue)
+        elif not os.path.exists(os.path.join(self.r.racine, preferences.NOM)):
+            preferences.enregistrer_langue(self.r.racine, langue)   # poste installé avant 1.2.0
+        self.ui.definir_langue(langue)
+        return True
+
     def accueil_premier_lancement(self) -> bool:
         """Écran « identifiant requis » + avertissement santé, tant que le texte en vigueur n'a pas été accepté."""
         lignes, empreinte = accueil.charger(self.ui.langue)
@@ -252,6 +272,9 @@ class Lanceur:
 
     def demarrer(self) -> int:
         log.info("=== lanceur %s (moteur %s) ===", VERSION, MOTEUR)
+        if not self.choisir_langue():
+            log.info("aucune langue choisie : sortie")
+            return SORTIE_SANS_LANGUE
         if not self.accueil_premier_lancement():
             log.info("avertissement santé non accepté : sortie")
             return SORTIE_AVERTISSEMENT_REFUSE

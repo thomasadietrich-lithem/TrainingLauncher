@@ -5,6 +5,7 @@
   --auto-test [fichier]  vérification de fabrication (CI) : modules du moteur importables, clés lisibles
                          (résultat aussi écrit dans <fichier> : l'exécutable gelé n'a pas de console)
   --version              affiche version du lanceur et moteur
+  --langue=fr|en         présélection de la langue au premier lancement (passée par l'installeur)
 """
 
 from __future__ import annotations
@@ -82,9 +83,10 @@ def main(argv=None) -> int:
     from .config import Reglages, charger_cles_publiques
     from .interface import interface_par_defaut
     from .lanceur import Lanceur, configurer_journal
+    from .preferences import langue_argument
     reglages = Reglages(cles_publiques=charger_cles_publiques())
     configurer_journal(reglages)
-    return Lanceur(reglages, interface_par_defaut()).demarrer()
+    return Lanceur(reglages, interface_par_defaut(), langue_proposee=langue_argument(argv)).demarrer()
 
 
 if __name__ == "__main__":

@@ -28,7 +28,7 @@ from nvs_lanceur import reseau  # noqa: E402
 from nvs_lanceur.config import Reglages  # noqa: E402
 from nvs_lanceur.execution import CODE_INCOMPATIBLE, Resultat  # noqa: E402
 from nvs_lanceur.interface import Interface  # noqa: E402
-from nvs_lanceur.lanceur import (SORTIE_AVERTISSEMENT_REFUSE, ERR_EXERCICE_KO, ERR_PREMIERE_INSTALLATION, OK, SORTIE_MAJ_LANCEUR,  # noqa: E402
+from nvs_lanceur.lanceur import (SORTIE_AVERTISSEMENT_REFUSE, SORTIE_SANS_LANGUE, ERR_EXERCICE_KO, ERR_PREMIERE_INSTALLATION, OK, SORTIE_MAJ_LANCEUR,  # noqa: E402
                                  Lanceur)
 from nvs_lanceur.manifeste import ManifesteInvalide, lire_manifeste  # noqa: E402
 from outils import publier  # noqa: E402
@@ -96,6 +96,15 @@ class InterfaceTest(Interface):
         self.accueils_vus += 1
         self.lignes_accueil = lignes
         return self.accepte
+
+    langue_choisie = "fr"       # réponse à l'écran de langue ; None = Quitter
+    langues_proposees = None
+
+    def choisir_langue(self, defaut):
+        if self.langues_proposees is None:
+            self.langues_proposees = []
+        self.langues_proposees.append(defaut)
+        return self.langue_choisie
 
     dossier = "defaut"          # "defaut" = Continuer ; None = Quitter ; sinon chemin choisi (ou liste de chemins)
     dossiers_proposes = None
@@ -587,6 +596,79 @@ class TestAccueil(Base):
             self.assertNotIn("](", tout)
             self.assertNotIn("English version below", tout)
         self.assertNotIn("Health warning", "\n".join(t for _, t in accueil.charger("fr")[0]))
+
+
+class TestLangue(Base):
+    """Premier lancement : choix français / anglais, mémorisé, suivi par les écrans et transmis à l'exercice."""
+
+    def test_choisie_une_seule_fois_et_suivie(self):
+        self.publier()
+        ui = InterfaceTest()
+        ui.langue_choisie = "en"
+        self.assertEqual(self.lanceur(ui).demarrer(), OK)
+        self.assertEqual(ui.langues_proposees, ["fr"])           # présélection : langue du système (ici fr)
+        self.assertEqual(ui.langue, "en")
+        self.assertIn("Health warning", "\n".join(t for _, t in ui.lignes_accueil))   # avertissement en anglais
+        ui2 = InterfaceTest()
+        self.lanceur(ui2).demarrer()
+        self.assertIsNone(ui2.langues_proposees)                 # plus redemandée
+        self.assertEqual(ui2.langue, "en")
+
+    def test_presélection_installeur(self):
+        self.publier()
+        ui = InterfaceTest()
+        self.lanceur(ui, langue_proposee="en").demarrer()
+        self.assertEqual(ui.langues_proposees, ["en"])
+        self.assertEqual(ui.langue, "fr")                        # la personne a choisi le français
+
+    def test_quitter_arrete_tout(self):
+        self.publier()
+        ui = InterfaceTest()
+        ui.langue_choisie = None
+        self.assertEqual(self.lanceur(ui).demarrer(), SORTIE_SANS_LANGUE)
+        self.assertEqual(ui.accueils_vus, 0)
+        self.assertEqual(self.seances(), [])
+        ui2 = InterfaceTest()
+        self.lanceur(ui2).demarrer()
+        self.assertEqual(ui2.langues_proposees, ["fr"])          # redemandée au lancement suivant
+
+    def test_poste_deja_installe_pas_redemandee(self):
+        """Lanceur ≤ 1.1.1 : la langue est reprise de l'acceptation des avertissements."""
+        from nvs_lanceur import accueil, preferences
+        self.publier()
+        _, empreinte = accueil.charger("en")
+        accueil.enregistrer(self.racine, empreinte, "en")
+        ui = InterfaceTest()
+        self.assertEqual(self.lanceur(ui).demarrer(), OK)
+        self.assertIsNone(ui.langues_proposees)
+        self.assertEqual(ui.accueils_vus, 0)
+        self.assertEqual(ui.langue, "en")
+        self.assertEqual(preferences.lire_langue(self.racine), "en")
+        self.assertTrue(os.path.exists(os.path.join(self.racine, preferences.NOM)))
+
+    def test_langue_transmise_a_l_exercice(self):
+        from nvs_lanceur.execution import environnement_enfant
+        self.assertEqual(environnement_enfant("d", "x", "1", "en")["NVS_LANGUE"], "en")
+        env = environnement_enfant("d", "x", "1")
+        self.assertEqual(env.get("NVS_LANGUE"), os.environ.get("NVS_LANGUE"))   # rien d'ajouté sans langue
+        self.assertEqual(environnement_enfant("d", "x", "1", "de").get("NVS_LANGUE"), os.environ.get("NVS_LANGUE"))
+
+    def test_argument_installeur(self):
+        from nvs_lanceur.preferences import langue_argument
+        self.assertEqual(langue_argument(["--langue=en"]), "en")
+        self.assertEqual(langue_argument(["--langue", "fr"]), "fr")
+        self.assertEqual(langue_argument(["--langue=French"]), "fr")
+        self.assertIsNone(langue_argument(["--langue=de"]))
+        self.assertIsNone(langue_argument([]))
+
+    def test_fichier_illisible(self):
+        from nvs_lanceur import preferences
+        os.makedirs(self.racine, exist_ok=True)
+        with open(os.path.join(self.racine, preferences.NOM), "w") as f:
+            f.write("{pas du json")
+        self.assertIsNone(preferences.lire_langue(self.racine))
+        preferences.enregistrer_langue(self.racine, "en")
+        self.assertEqual(preferences.lire_langue(self.racine), "en")
 
 
 class TestIdentite(unittest.TestCase):

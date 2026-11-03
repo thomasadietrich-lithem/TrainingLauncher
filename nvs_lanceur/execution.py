@@ -36,7 +36,7 @@ def commande_enfant(entree: str) -> List[str]:
     return [sys.executable, "-m", "nvs_lanceur", "--executer", entree]
 
 
-def environnement_enfant(dossier_donnees: str, exercice_id: str, version: str) -> Dict[str, str]:
+def environnement_enfant(dossier_donnees: str, exercice_id: str, version: str, langue: str = "") -> Dict[str, str]:
     env = dict(os.environ)
     env.update({
         "NVS_DATA_DIR": dossier_donnees,          # l'exercice y range config/ et session_data/ (chap. 16.4 a)
@@ -45,6 +45,8 @@ def environnement_enfant(dossier_donnees: str, exercice_id: str, version: str) -
         "NVS_EXERCICE_ID": exercice_id,
         "NVS_EXERCICE_VERSION": version,
     })
+    if langue in ("fr", "en"):
+        env["NVS_LANGUE"] = langue                # langue choisie dans le lanceur ; l'exercice peut s'en servir
     if not getattr(sys, "frozen", False):
         # en mode source, l'enfant doit retrouver le paquet nvs_lanceur
         racine_paquet = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -52,9 +54,10 @@ def environnement_enfant(dossier_donnees: str, exercice_id: str, version: str) -
     return env
 
 
-def lancer(entree: str, dossier_donnees: str, exercice_id: str, version: str, journal_enfant: str = "") -> Resultat:
+def lancer(entree: str, dossier_donnees: str, exercice_id: str, version: str, journal_enfant: str = "",
+           langue: str = "") -> Resultat:
     os.makedirs(dossier_donnees, exist_ok=True)
-    env = environnement_enfant(dossier_donnees, exercice_id, version)
+    env = environnement_enfant(dossier_donnees, exercice_id, version, langue)
     if journal_enfant:
         env["NVS_JOURNAL_ENFANT"] = journal_enfant
     debut = time.monotonic()
