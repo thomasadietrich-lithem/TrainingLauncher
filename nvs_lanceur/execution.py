@@ -55,9 +55,11 @@ def environnement_enfant(dossier_donnees: str, exercice_id: str, version: str, l
 
 
 def lancer(entree: str, dossier_donnees: str, exercice_id: str, version: str, journal_enfant: str = "",
-           langue: str = "") -> Resultat:
+           langue: str = "", langue_retour: str = "") -> Resultat:
     os.makedirs(dossier_donnees, exist_ok=True)
     env = environnement_enfant(dossier_donnees, exercice_id, version, langue)
+    if langue_retour:
+        env["NVS_LANGUE_RETOUR"] = langue_retour  # l'exercice y écrit « fr » ou « en » si la personne change de langue
     if journal_enfant:
         env["NVS_JOURNAL_ENFANT"] = journal_enfant
     debut = time.monotonic()

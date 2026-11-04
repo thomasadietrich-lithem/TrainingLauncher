@@ -27,7 +27,7 @@ L'exercice « Tilt Global » reprend le principe d'une tâche d'entraînement vi
 
 | Élément | Version | Rôle | Licence |
 | --- | --- | --- | --- |
-| Lanceur NeuroVision (`NeuroVision.exe`, module `nvs_lanceur`) | 1.2.0, moteur 1 | Vérifie les signatures, télécharge et lance les exercices | GPL-3.0-or-later |
+| Lanceur NeuroVision (`NeuroVision.exe`, module `nvs_lanceur`) | 1.2.1, moteur 1 | Vérifie les signatures, télécharge et lance les exercices | GPL-3.0-or-later |
 | Python | 3.10.11 | Interpréteur embarqué | PSF-2.0 |
 | PsychoPy | 2025.1.1 | Affichage des stimulus, son, clavier, réglage d'écran | GPL-3.0 |
 | NumPy, SciPy | épinglées | Calculs | BSD-3-Clause |

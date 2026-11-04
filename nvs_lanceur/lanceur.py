@@ -95,7 +95,8 @@ class Lanceur:
         self.ui = interface
         self.langue_proposee = langue_proposee          # langue de l'installeur (--langue=…), simple présélection
         self.executer = executer or (lambda entree, donnees, eid, v: execution.lancer(
-            entree, donnees, eid, v, journal_enfant=reglages.fichier_journal_enfant, langue=self.ui.langue))
+            entree, donnees, eid, v, journal_enfant=reglages.fichier_journal_enfant, langue=self.ui.langue,
+            langue_retour=reglages.fichier_langue_retour))
         self.installer_lanceur = installer_lanceur
         self.verifier_authenticode = verifier_authenticode
         self.est_msix = est_msix
@@ -216,9 +217,32 @@ class Lanceur:
             return None
         entree = os.path.join(self.depot.dossier_version(eid, version), *ex.entree.split("/"))
         log.info("exécution de %s %s", eid, version)
+        try:
+            os.remove(self.r.fichier_langue_retour)           # pas de reste d'une exécution précédente
+        except OSError:
+            pass
         res = self.executer(entree, self.r.donnees_exercice(eid), eid, version)
         log.info("%s %s terminé : code %s en %.0f s", eid, version, res.code, res.duree_s)
+        self.reprendre_langue_exercice()
         return res
+
+    def reprendre_langue_exercice(self) -> None:
+        """La langue reste choisie à UN seul endroit : si la personne l'a changée dans l'exercice (liste de la
+        fenêtre de connexion), l'exercice l'écrit dans NVS_LANGUE_RETOUR et le lanceur la reprend comme sienne."""
+        chemin = self.r.fichier_langue_retour
+        try:
+            with open(chemin, encoding="utf-8") as f:
+                langue = f.read(16).strip().lower()
+        except OSError:
+            return
+        try:
+            os.remove(chemin)
+        except OSError:
+            pass
+        if langue in preferences.LANGUES and langue != self.ui.langue:
+            preferences.enregistrer_langue(self.r.racine, langue)
+            self.ui.definir_langue(langue)
+            log.info("langue changée dans l'exercice : %s", langue)
 
     def executer_exercice(self, eid: str) -> int:
         courante = self.depot.courante(eid)

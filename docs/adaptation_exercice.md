@@ -33,7 +33,20 @@ Sous le lanceur (`NVS_LANCEUR_VERSION` présent), le texte doit dire : « Fermez
 mise à jour se fera automatiquement. » / « Close NeuroVision and start it again: the update will install
 automatically. » — le texte actuel est conservé hors lanceur.
 
+## (d) Langue choisie à UN seul endroit (lanceur ≥ 1.2.1, décision de Thomas du 04/11/2026)
+Le lanceur demande la langue au premier lancement et la transmet dans `NVS_LANGUE` (`fr` ou `en`).
+- Sous le lanceur (`NVS_LANGUE` présent), l'exercice prend cette langue comme langue de départ (prioritaire sur sa
+  propre préférence enregistrée) : la fenêtre de connexion s'ouvre dans cette langue et la liste « Langue / Language »
+  est déjà réglée dessus. Aucune autre fenêtre de langue.
+- La liste reste dans la fenêtre de connexion (seul moyen de changer de langue ensuite). Si la personne y choisit une
+  autre langue, l'exercice écrit `fr` ou `en` (texte seul) dans le fichier dont le chemin est donné par
+  `NVS_LANGUE_RETOUR` ; le lanceur le lit à la fin de l'exercice, l'enregistre et le retransmet aux lancements
+  suivants. Écriture au mieux : un échec ne doit jamais bloquer la séance.
+- Sans lanceur (variables absentes) : comportement historique inchangé.
+
 ## Tests à ajouter dans `tests/`
 - `NVS_DATA_DIR` défini → `MONITOR_CACHE_FILE`, `SETTINGS_FILE`, `PENDING_UPLOAD_FILE`, `CONSENT_FILE`, journaux et
   sorties de séance sous ce dossier ; non défini → comportement historique.
+- `NVS_LANGUE=en` → connexion en anglais au 1er lancement ; changement de langue dans la connexion → `en`/`fr` écrit
+  dans `NVS_LANGUE_RETOUR` ; variables absentes → inchangé.
 - `outils/verifier_imports.py Fba_Training_Tilt_Global.py` → `IMPORTS OK` (contrat moteur), à chaque version.

@@ -614,6 +614,53 @@ class TestLangue(Base):
         self.assertIsNone(ui2.langues_proposees)                 # plus redemandée
         self.assertEqual(ui2.langue, "en")
 
+    SCRIPT_LANGUE = (
+        'SOFTWARE_VERSION = "{v}"\n'
+        'import os\n'
+        'base = os.environ["NVS_DATA_DIR"]\n'
+        'os.makedirs(base, exist_ok=True)\n'
+        'open(os.path.join(base, "langue_recue.txt"), "w").write(os.environ.get("NVS_LANGUE", ""))\n'
+        'retour = os.environ.get("NVS_LANGUE_RETOUR")\n'
+        'nouvelle = open(os.path.join(base, "..", "a_ecrire.txt")).read() if os.path.exists('
+        'os.path.join(base, "..", "a_ecrire.txt")) else ""\n'
+        'if retour and nouvelle:\n'
+        '    open(retour, "w").write(nouvelle)\n'
+    )
+
+    def _langue_recue(self):
+        with open(os.path.join(self.donnees, "tilt_global", "langue_recue.txt")) as f:
+            return f.read()
+
+    def test_langue_changee_dans_l_exercice_reprise_par_le_lanceur(self):
+        self.publier(script=self.SCRIPT_LANGUE)
+        ui = InterfaceTest()
+        ui.langue_choisie = "fr"
+        self.assertEqual(self.lanceur(ui).demarrer(), OK)
+        self.assertEqual(self._langue_recue(), "fr")
+        os.makedirs(self.donnees, exist_ok=True)
+        with open(os.path.join(self.donnees, "a_ecrire.txt"), "w") as f:
+            f.write("en\n")                                    # la personne choisit English dans l'exercice
+        self.lanceur(InterfaceTest()).demarrer()
+        self.assertFalse(os.path.exists(os.path.join(self.racine, "langue_retour.txt")))   # consommé
+        os.remove(os.path.join(self.donnees, "a_ecrire.txt"))
+        ui3 = InterfaceTest()
+        self.lanceur(ui3).demarrer()
+        self.assertIsNone(ui3.langues_proposees)                # jamais redemandée
+        self.assertEqual(ui3.langue, "en")                      # le lanceur a repris le choix de l'exercice
+        self.assertEqual(self._langue_recue(), "en")            # et le retransmet
+
+    def test_langue_retour_invalide_ignoree(self):
+        self.publier(script=self.SCRIPT_LANGUE)
+        ui = InterfaceTest()
+        ui.langue_choisie = "fr"
+        self.lanceur(ui).demarrer()
+        with open(os.path.join(self.donnees, "a_ecrire.txt"), "w") as f:
+            f.write("de")
+        self.lanceur(InterfaceTest()).demarrer()
+        ui3 = InterfaceTest()
+        self.lanceur(ui3).demarrer()
+        self.assertEqual(ui3.langue, "fr")
+
     def test_presélection_installeur(self):
         self.publier()
         ui = InterfaceTest()

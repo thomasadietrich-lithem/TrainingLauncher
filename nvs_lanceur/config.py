@@ -86,6 +86,11 @@ class Reglages:
         return os.path.join(self.racine, "journal_erreurs_exercices.log")
 
     @property
+    def fichier_langue_retour(self) -> str:
+        """Langue choisie DANS l'exercice (liste de la fenêtre de connexion), rendue au lanceur (contrat §16.4)."""
+        return os.path.join(self.racine, "langue_retour.txt")
+
+    @property
     def dossier_temp(self) -> str:
         return os.path.join(self.racine, "temp")
 
