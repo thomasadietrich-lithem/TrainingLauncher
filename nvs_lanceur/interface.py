@@ -144,6 +144,12 @@ class InterfaceTk(Interface):  # pragma: no cover - testée sur Windows (P3/P5)
     def __init__(self, langue: Optional[str] = None):
         super().__init__(langue)
         import tkinter as tk
+        if os.name == "nt":               # sinon Windows agrandit la fenêtre en image floue sur les écrans à 125-150 %
+            try:
+                import ctypes
+                ctypes.windll.shcore.SetProcessDpiAwareness(1)
+            except Exception:
+                pass
         self.tk = tk
         self.racine = tk.Tk()
         self.racine.withdraw()
@@ -343,13 +349,21 @@ class InterfaceTk(Interface):  # pragma: no cover - testée sur Windows (P3/P5)
 
 
 def interface_par_defaut() -> Interface:
-    """Qt d'abord (mêmes fenêtres que l'exercice), puis Tk, puis console."""
+    """Qt d'abord (mêmes fenêtres que l'exercice), puis Tk, puis console. Le choix est écrit dans le journal :
+    une fenêtre de secours (Tk) doit rester l'exception et se voir."""
+    import logging
+    log = logging.getLogger("nvs_lanceur")
     try:
         from .interface_qt import InterfaceQt
-        return InterfaceQt()
-    except Exception:
-        pass
+        ui = InterfaceQt()
+        log.info("fenêtres : Qt")
+        return ui
+    except Exception as exc:
+        log.warning("fenêtres Qt indisponibles (%s : %s) : fenêtres de secours", exc.__class__.__name__, exc)
     try:
-        return InterfaceTk()
+        ui = InterfaceTk()
+        log.info("fenêtres : Tk (secours)")
+        return ui
     except Exception:
+        log.warning("fenêtres Tk indisponibles : console")
         return Interface()
