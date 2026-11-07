@@ -841,3 +841,16 @@ class TestIdentite(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestVersionVisible(unittest.TestCase):
+    """1.2.3 (07/11) : la version du lanceur figure dans le titre de chaque fenêtre, en français et en anglais."""
+
+    def test_titre_porte_la_version(self):
+        from nvs_lanceur import VERSION
+        ui = Interface()
+        for langue in ("fr", "en"):
+            ui.definir_langue(langue)
+            titre = ui.t("titre")
+            self.assertTrue(titre.startswith("NeuroVision Solidaire Training Platform"), titre)
+            self.assertTrue(titre.endswith("version " + VERSION), titre)

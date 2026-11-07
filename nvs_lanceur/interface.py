@@ -104,7 +104,11 @@ class Interface:
         self.langue = langue or langue_systeme()
 
     def t(self, cle: str, **kw) -> str:
-        return TEXTES[self.langue][cle].format(**kw)
+        texte = TEXTES[self.langue][cle].format(**kw)
+        if cle == "titre":                     # 1.2.3 (07/11, demande de Thomas) : version visible dans chaque fenêtre
+            from . import VERSION
+            texte += " — version " + VERSION
+        return texte
 
     def definir_langue(self, langue: str) -> None:
         if langue in TEXTES:
