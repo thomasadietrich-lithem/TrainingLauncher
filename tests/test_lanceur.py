@@ -854,3 +854,31 @@ class TestVersionVisible(unittest.TestCase):
             titre = ui.t("titre")
             self.assertTrue(titre.startswith("NeuroVision Solidaire Training Platform"), titre)
             self.assertTrue(titre.endswith("version " + VERSION), titre)
+
+
+class TestPagesPubliquesAJour(unittest.TestCase):
+    """08/11 : les pages publiques (liées depuis la fiche Microsoft Store) ne doivent pas mentir sur les versions.
+    - La version du lanceur citée dans docs/A_PROPOS.md = VERSION.
+    - Aucune version d'exercice écrite en dur (elle change à chaque publication, sans nouvelle version du lanceur)."""
+
+    RACINE = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir)
+
+    def _lire(self, nom):
+        with open(os.path.join(self.RACINE, nom), encoding="utf-8") as f:
+            return f.read()
+
+    def test_version_du_lanceur_dans_a_propos(self):
+        import re
+        from nvs_lanceur import VERSION
+        texte = self._lire("docs/A_PROPOS.md")
+        ligne = next(l for l in texte.splitlines() if "nvs_lanceur" in l and l.startswith("|"))
+        citees = re.findall(r"\b\d+\.\d+\.\d+\b", ligne)
+        self.assertEqual(citees, [VERSION], ligne)
+
+    def test_aucune_version_d_exercice_en_dur(self):
+        import re
+        for nom in ("README.md", "docs/A_PROPOS.md", "docs/AVERTISSEMENTS.md", "docs/CONFIDENTIALITE.md"):
+            texte = self._lire(nom)
+            for ligne in texte.splitlines():
+                if re.search(r"(?i)tilt|exercice|exercise", ligne):
+                    self.assertIsNone(re.search(r"\b2\.\d+\.\d+\b", ligne), f"{nom} : {ligne}")

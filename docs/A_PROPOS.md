@@ -42,7 +42,7 @@ L'exercice « Tilt Global » reprend le principe d'une tâche d'entraînement vi
 
 Liste complète des paquets épinglés : [`THIRD_PARTY_LICENSES.md`](../THIRD_PARTY_LICENSES.md).
 
-**Téléchargé après l'installation** : le manifeste signé du canal `stable` (signature Ed25519, anti-retour) et l'exercice « Tilt Global » 2.15.0 (empreinte SHA-256 revérifiée à chaque lancement), depuis le serveur du projet.
+**Téléchargé après l'installation** : le manifeste signé du canal `stable` (signature Ed25519, anti-retour) et la version en vigueur de l'exercice « Tilt Global » (son numéro s'affiche dans l'application ; empreinte SHA-256 revérifiée à chaque lancement), depuis le serveur du projet.
 
 **Échanges réseau** : téléchargement des exercices (aucune donnée personnelle) ; envoi des résultats de séance sous identifiant non nominatif vers le serveur du projet (Amazon Web Services, région Paris).
 
@@ -85,7 +85,7 @@ The "Tilt Global" exercise follows the principle of a visual training task descr
 
 The component table above applies as is. Full list of pinned packages: [`THIRD_PARTY_LICENSES.md`](../THIRD_PARTY_LICENSES.md).
 
-**Downloaded after installation**: the signed manifest of the `stable` channel (Ed25519 signature, anti-rollback) and the "Tilt Global" 2.15.0 exercise (SHA-256 fingerprint re-checked at every launch), from the project's server.
+**Downloaded after installation**: the signed manifest of the `stable` channel (Ed25519 signature, anti-rollback) and the current version of the "Tilt Global" exercise (its number is shown in the app; SHA-256 fingerprint re-checked at every launch), from the project's server.
 
 **Network traffic**: download of exercises (no personal data); upload of session results under a non-identifying ID to the project's server (Amazon Web Services, Paris region).
 
