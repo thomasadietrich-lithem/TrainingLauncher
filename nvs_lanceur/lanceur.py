@@ -68,10 +68,12 @@ def signature_authenticode_valide(chemin: str) -> bool:  # pragma: no cover - Wi
     """Vérifie la signature Windows (Authenticode) d'un exécutable. Utilisé seulement si le manifeste l'exige."""
     if os.name != "nt":
         return False
+    # 1.2.4 : chemin passé par variable d'environnement (une apostrophe dans le chemin ne casse plus la commande)
     cmd = ["powershell", "-NoProfile", "-NonInteractive", "-Command",
-           f"(Get-AuthenticodeSignature -LiteralPath '{chemin}').Status"]
+           "(Get-AuthenticodeSignature -LiteralPath $env:NVS_FICHIER_A_VERIFIER).Status"]
     try:
         out = subprocess.run(cmd, capture_output=True, text=True, timeout=30,
+                             env=dict(os.environ, NVS_FICHIER_A_VERIFIER=chemin),
                              creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         return out.stdout.strip() == "Valid"
     except Exception:
@@ -96,7 +98,7 @@ class Lanceur:
         self.langue_proposee = langue_proposee          # langue de l'installeur (--langue=…), simple présélection
         self.executer = executer or (lambda entree, donnees, eid, v: execution.lancer(
             entree, donnees, eid, v, journal_enfant=reglages.fichier_journal_enfant, langue=self.ui.langue,
-            langue_retour=reglages.fichier_langue_retour))
+            langue_retour=reglages.fichier_langue_retour, cles_publiques=reglages.cles_publiques))
         self.installer_lanceur = installer_lanceur
         self.verifier_authenticode = verifier_authenticode
         self.est_msix = est_msix
@@ -118,9 +120,10 @@ class Lanceur:
         except ManifesteInvalide as exc:
             log.warning("manifeste REFUSÉ : %s", exc)
             return None
-        if m.sequence < self.depot.sequence_vue:
-            log.warning("manifeste REFUSÉ : sequence %s < %s déjà vue (retour en arrière)", m.sequence,
-                        self.depot.sequence_vue)
+        plancher = max(self.depot.sequence_vue, self.r.sequence_min)
+        if m.sequence < plancher:
+            log.warning("manifeste REFUSÉ : sequence %s < %s (déjà vue ou minimum de ce lanceur : retour en arrière)",
+                        m.sequence, plancher)
             return None
         if m.sequence > self.depot.sequence_vue:
             self.depot.oublier_echecs_anterieurs(m.sequence)

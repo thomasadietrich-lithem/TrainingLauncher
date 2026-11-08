@@ -9,6 +9,7 @@ import urllib.parse
 import urllib.request
 
 from . import VERSION
+from .config import est_fige
 
 
 class ErreurReseau(Exception):
@@ -28,9 +29,25 @@ def _verifier_schema(url: str) -> None:
     p = urllib.parse.urlparse(url)
     if p.scheme == "https":
         return
-    if p.scheme == "http" and p.hostname in ("127.0.0.1", "localhost"):
-        return
+    if p.scheme == "http" and p.hostname in ("127.0.0.1", "localhost") and not est_fige():
+        return                                # tests uniquement : jamais dans l'exécutable distribué (1.2.4)
     raise ErreurReseau(f"adresse non sécurisée refusée : {p.scheme}://{p.hostname}")
+
+
+class _RedirectionsSurveillees(urllib.request.HTTPRedirectHandler):
+    """1.2.4 (audit de sécurité du 08/11/2026, constat 5) : une redirection n'est suivie que vers la même adresse
+    de base (même schéma, même serveur) ; toute autre est refusée."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        avant = urllib.parse.urlparse(req.full_url)
+        apres = urllib.parse.urlparse(urllib.parse.urljoin(req.full_url, newurl))
+        if (apres.scheme, apres.hostname, apres.port) != (avant.scheme, avant.hostname, avant.port):
+            raise urllib.error.HTTPError(req.full_url, code, "redirection refusée", headers, fp)
+        _verifier_schema(apres.geturl())
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+_OUVREUR = urllib.request.build_opener(_RedirectionsSurveillees)
 
 
 def _ouvrir(url: str, delai: float):
@@ -38,7 +55,7 @@ def _ouvrir(url: str, delai: float):
     req = urllib.request.Request(url, headers={"User-Agent": f"NeuroVision-Lanceur/{VERSION}",
                                                "Cache-Control": "no-cache"})
     try:
-        return urllib.request.urlopen(req, timeout=delai)
+        return _OUVREUR.open(req, timeout=delai)
     except urllib.error.HTTPError as exc:
         raise ErreurReseau(f"HTTP {exc.code}") from None
     except (urllib.error.URLError, OSError, ValueError) as exc:

@@ -1,7 +1,7 @@
 """Point d'entrée : `NeuroVision.exe` (gelé) ou `python -m nvs_lanceur`.
 
   (sans argument)        démarrage normal patient
-  --executer <entree>    processus enfant : exécute un exercice (usage interne)
+  --executer <entree>    processus enfant : exécute un exercice signé et intact, refuse tout autre script (1.2.4)
   --auto-test [fichier]  vérification de fabrication (CI) : modules du moteur importables, clés lisibles
                          (résultat aussi écrit dans <fichier> : l'exécutable gelé n'a pas de console)
   --version              affiche version du lanceur et moteur
@@ -34,6 +34,9 @@ def _auto_test(sortie=None) -> int:
     if not chemin_logo():
         erreurs.append("logo.png absent")
     preparer_qt()                         # comme dans le processus enfant, avant tout import de l'exercice
+    import runpy
+    if not hasattr(runpy, "_run_module_code"):    # 1.2.4 : l'exécution vérifiée s'appuie sur ce mécanisme de runpy
+        erreurs.append("runpy._run_module_code absent : exécution vérifiée des exercices impossible")
     try:
         cles = charger_cles_publiques()
         print(f"clés publiques : {len(cles)}")
@@ -77,8 +80,8 @@ def _auto_test(sortie=None) -> int:
 def main(argv=None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv[:1] == ["--executer"] and len(argv) >= 2:
-        from .execution import executer_dans_ce_processus
-        return executer_dans_ce_processus(argv[1])
+        from .execution import executer_exercice_signe
+        return executer_exercice_signe(argv[1])
     if argv[:1] == ["--auto-test"]:
         return _auto_test(argv[1] if len(argv) > 1 else None)
     if argv[:1] == ["--version"]:

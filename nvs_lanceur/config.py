@@ -26,6 +26,25 @@ CONTACT_EMAIL = "thomas.a.dietrich@gmail.com"   # contact définitif (Thomas, 03
 
 NOM_DOSSIER = "NeuroVisionSolidaire"
 
+# 1.2.4 (audit de sécurité du 08/11/2026, constat 3) : plus petite séquence de manifeste acceptée, même sur un poste
+# neuf. Empêche de rejouer un ancien manifeste signé (ancien exercice) sur une nouvelle installation. = séquence en
+# ligne à la fabrication de cette version (stable n° 8, exercice 2.18.3, 07/11/2026). À relever à chaque version.
+SEQUENCE_MIN = 8
+
+
+def est_fige() -> bool:
+    """True dans l'exécutable distribué (PyInstaller) : les réglages de test par variables d'environnement y sont
+    ignorés (audit de sécurité du 08/11/2026, constat 6)."""
+    return bool(getattr(sys, "frozen", False))
+
+
+def env_de_test(nom: str) -> Optional[str]:
+    """Variable d'environnement réservée aux tests (NVS_URL_BASE, NVS_CANAL, NVS_RACINE, NVS_DOCUMENTS) :
+    lue seulement hors de l'exécutable distribué."""
+    if est_fige():
+        return None
+    return os.environ.get(nom) or None
+
 
 def _dossier_ressources() -> str:
     """Dossier des fichiers embarqués (gelé par PyInstaller ou source)."""
@@ -47,7 +66,7 @@ def charger_cles_publiques(chemin: str | None = None) -> Dict[str, str]:
 
 
 def racine_par_defaut() -> str:
-    env = os.environ.get("NVS_RACINE")
+    env = env_de_test("NVS_RACINE")
     if env:
         return env
     base = os.environ.get("LOCALAPPDATA") or os.path.join(os.path.expanduser("~"), ".local", "share")
@@ -57,11 +76,12 @@ def racine_par_defaut() -> str:
 @dataclass
 class Reglages:
     racine: str = field(default_factory=racine_par_defaut)
-    url_base: str = field(default_factory=lambda: os.environ.get("NVS_URL_BASE", URL_BASE_DEFAUT))
-    canal: str = field(default_factory=lambda: os.environ.get("NVS_CANAL", CANAL_DEFAUT))
+    url_base: str = field(default_factory=lambda: env_de_test("NVS_URL_BASE") or URL_BASE_DEFAUT)
+    canal: str = field(default_factory=lambda: env_de_test("NVS_CANAL") or CANAL_DEFAUT)
     cles_publiques: Dict[str, str] = field(default_factory=dict)
     delai_reseau_s: float = DELAI_RESEAU_S
     delai_echec_demarrage_s: float = DELAI_ECHEC_DEMARRAGE_S
+    sequence_min: int = SEQUENCE_MIN
     donnees: Optional[str] = None   # dossier de données choisi (emplacement.resoudre) ; HORS des données de l'appli
 
     # Arborescence (chap. 16.2). « donnees » n'est JAMAIS effacé ni déplacé par le lanceur.

@@ -21,6 +21,26 @@ from .manifeste import Exercice, Manifeste, ManifesteInvalide, lire_manifeste
 NOM_MANIFESTE = "_manifeste.json"
 NOM_SIGNATURE = "_manifeste.json.sig"
 
+# 1.2.4 (audit de sécurité du 08/11/2026, constat 10) : extensions de fichiers exécutables par Python ou Windows.
+# Un tel fichier présent dans le dossier d'une version SANS figurer au manifeste signé fait refuser la version
+# (sinon un module déposé à côté de l'exercice, ex. numpy.py, serait importé à sa place).
+EXTENSIONS_CODE = (".py", ".pyw", ".pyc", ".pyo", ".pyd", ".dll", ".so", ".pth", ".exe")
+
+
+def fichiers_code_en_trop(dossier: str, chemins_signes) -> list:
+    """Fichiers de code présents dans `dossier` mais absents du manifeste (les caches __pycache__ sont ignorés :
+    Python n'y cherche que la version compilée d'un fichier source présent)."""
+    attendus = {c.replace("\\", "/") for c in chemins_signes}
+    en_trop = []
+    for racine, dossiers, fichiers in os.walk(dossier):
+        dossiers[:] = [d for d in dossiers if d != "__pycache__"]
+        for nom in fichiers:
+            if nom.lower().endswith(EXTENSIONS_CODE):
+                rel = os.path.relpath(os.path.join(racine, nom), dossier).replace(os.sep, "/")
+                if rel not in attendus:
+                    en_trop.append(rel)
+    return en_trop
+
 
 def sha256_fichier(chemin: str) -> str:
     h = hashlib.sha256()
@@ -132,6 +152,8 @@ class Depot:
                     return None
             except OSError:
                 return None
+        if fichiers_code_en_trop(d, [fi.chemin for fi in ex.fichiers]):
+            return None
         return ex
 
     def installer(self, manifeste: Manifeste, ex: Exercice, telecharger: Callable[[str, str, int, str], None]) -> None:

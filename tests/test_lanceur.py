@@ -11,6 +11,7 @@ import http.server
 import json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import threading
@@ -173,7 +174,7 @@ class Base(unittest.TestCase):
 
     def lanceur(self, ui=None, **kw):
         r = Reglages(racine=self.racine, url_base=self.srv.url, canal="stable", cles_publiques=dict(self.pub),
-                     delai_reseau_s=3.0)
+                     delai_reseau_s=3.0, sequence_min=0)   # les manifestes de test commencent à la séquence 1
         return Lanceur(r, ui or InterfaceTest(), **kw)
 
     def seances(self, eid="tilt_global"):
@@ -431,7 +432,7 @@ class TestRetourArriere(Base):
         ex = L.depot.verifier_installee("tilt_global", "2.15.0")
         from nvs_lanceur.execution import lancer
         res = lancer(os.path.join(L.depot.dossier_version("tilt_global", "2.15.0"), ex.entree),
-                     os.path.join(self.racine, "donnees", "t"), "tilt_global", "2.15.0")
+                     os.path.join(self.racine, "donnees", "t"), "tilt_global", "2.15.0", cles_publiques=dict(self.pub))
         self.assertEqual(res.code, CODE_INCOMPATIBLE)
 
 
@@ -837,6 +838,150 @@ class TestIdentite(unittest.TestCase):
     def test_icone_trouvee(self):
         from nvs_lanceur.identite import chemin_icone
         self.assertTrue(chemin_icone())
+
+
+
+class TestSecurite124(Base):
+    """Lanceur 1.2.4 : correctifs de l'audit de sécurité du 08/11/2026 (claude/audit_securite_lanceur_0811.md)."""
+
+    def _enfant(self, entree, cles=None, env_extra=None):
+        env = dict(os.environ, PYTHONPATH=RACINE_DEPOT)
+        env.pop("NVS_CLES_PUBLIQUES", None)
+        if cles:
+            env["NVS_CLES_PUBLIQUES"] = json.dumps(cles)
+        env.update(env_extra or {})
+        return subprocess.run([sys.executable, "-m", "nvs_lanceur", "--executer", entree], env=env,
+                              cwd=self.tmp, capture_output=True, text=True, timeout=60)
+
+    def _installe(self):
+        self.publier(v="2.15.0")
+        L = self.lanceur()
+        L.mettre_a_jour_exercices(L.obtenir_manifeste())
+        d = L.depot.dossier_version("tilt_global", "2.15.0")
+        return L, d, os.path.join(d, "exo.py")
+
+    def test_constat1_script_quelconque_refuse(self):
+        pirate = os.path.join(self.tmp, "pirate.py")
+        temoin = os.path.join(self.tmp, "execute.txt")
+        with open(pirate, "w") as f:
+            f.write(f"open({temoin!r}, 'w').write('oui')\n")
+        r = self._enfant(pirate, cles=self.pub)
+        self.assertEqual(r.returncode, 4, r.stderr)
+        self.assertFalse(os.path.exists(temoin))
+        r = self._enfant(pirate)                                  # clés embarquées : refus aussi
+        self.assertEqual(r.returncode, 4, r.stderr)
+        self.assertFalse(os.path.exists(temoin))
+
+    def test_constat1_exercice_signe_accepte_puis_modifie_refuse(self):
+        L, d, entree = self._installe()
+        donnees = os.path.join(self.tmp, "d")
+        os.makedirs(donnees)
+        r = self._enfant(entree, cles=self.pub, env_extra={"NVS_DATA_DIR": donnees})
+        self.assertEqual(r.returncode, 0, r.stderr)
+        with open(entree, "a") as f:
+            f.write("\nopen('modifie.txt', 'w')\n")
+        r = self._enfant(entree, cles=self.pub, env_extra={"NVS_DATA_DIR": donnees})
+        self.assertEqual(r.returncode, 4, r.stderr)
+        self.assertFalse(os.path.exists(os.path.join(self.tmp, "modifie.txt")))
+
+    def test_constat10_module_depose_a_cote_refuse(self):
+        L, d, entree = self._installe()
+        self.assertIsNotNone(L.depot.verifier_installee("tilt_global", "2.15.0"))
+        with open(os.path.join(d, "numpy.py"), "w") as f:
+            f.write("raise SystemExit(99)\n")
+        self.assertIsNone(L.depot.verifier_installee("tilt_global", "2.15.0"))
+        r = self._enfant(entree, cles=self.pub)
+        self.assertEqual(r.returncode, 4, r.stderr)
+        os.remove(os.path.join(d, "numpy.py"))
+        os.makedirs(os.path.join(d, "__pycache__"))
+        with open(os.path.join(d, "__pycache__", "exo.cpython-310.pyc"), "wb") as f:
+            f.write(b"cache")                                   # un cache Python n'est pas un refus
+        self.assertIsNotNone(L.depot.verifier_installee("tilt_global", "2.15.0"))
+
+    def test_constat1_execution_identique_a_runpy(self):
+        """Ce que voit l'exercice est identique à l'exécution d'avant (runpy.run_path) : protocole inchangé."""
+        sonde = os.path.join(self.tmp, "sonde.py")
+        with open(sonde, "w", encoding="utf-8") as f:
+            f.write(
+                "import sys, os, json\n"
+                "def f(x: int) -> int:\n    return x\n"
+                "out = dict(name=__name__, file=__file__, argv=sys.argv, path0=sys.path[0], cwd=os.getcwd(),\n"
+                "           package=repr(__package__), spec=repr(__spec__), loader=repr(type(__loader__)),\n"
+                "           cached=repr(globals().get('__cached__')), main=sys.modules['__main__'].__dict__ is globals(),\n"
+                "           annotations=repr(f.__annotations__), doc=repr(__doc__), builtins=type(__builtins__).__name__)\n"
+                "open(os.environ['SONDE_SORTIE'], 'w').write(json.dumps(out, sort_keys=True))\n")
+        with open(sonde, "rb") as f:
+            source = f.read()
+        resultats = []
+        for mode in ("runpy", "verifie"):
+            sortie = os.path.join(self.tmp, f"sonde_{mode}.json")
+            arg = "None" if mode == "runpy" else "src"
+            code = ("import sys; from nvs_lanceur.execution import executer_dans_ce_processus as e; "
+                    f"src = open({sonde!r}, 'rb').read(); sys.exit(e({sonde!r}, {arg}))")
+            r = subprocess.run([sys.executable, "-c", code], cwd=self.tmp, capture_output=True, text=True,
+                               env=dict(os.environ, PYTHONPATH=RACINE_DEPOT, SONDE_SORTIE=sortie), timeout=60)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            with open(sortie) as f:
+                resultats.append(json.load(f))
+        self.assertEqual(resultats[0], resultats[1])
+        self.assertEqual(resultats[1]["annotations"], "{'x': <class 'int'>, 'return': <class 'int'>}")
+        self.assertTrue(resultats[1]["main"])
+        self.assertEqual(resultats[1]["name"], "__main__")
+
+    def test_constat3_sequence_minimale(self):
+        from nvs_lanceur.config import SEQUENCE_MIN
+        self.assertGreaterEqual(SEQUENCE_MIN, 8)                 # stable n° 8 en ligne à la fabrication de 1.2.4
+        self.assertEqual(Reglages(cles_publiques={}).sequence_min, SEQUENCE_MIN)
+        self.publier(v="2.15.0")                                  # séquence 1 : sous le minimum
+        r = Reglages(racine=self.racine, url_base=self.srv.url, canal="stable", cles_publiques=dict(self.pub),
+                     delai_reseau_s=3.0)
+        L = Lanceur(r, InterfaceTest())
+        self.assertIsNone(L.obtenir_manifeste())
+
+    def test_constat5_redirection_vers_autre_serveur_refusee(self):
+        class Redirige(http.server.BaseHTTPRequestHandler):
+            def log_message(self, *a, **k):
+                pass
+
+            def do_GET(self):
+                if self.path == "/ailleurs":
+                    self.send_response(302)
+                    self.send_header("Location", "http://localhost:9/x")
+                    self.end_headers()
+                elif self.path == "/ici":
+                    self.send_response(302)
+                    self.send_header("Location", "/ok")
+                    self.end_headers()
+                else:
+                    self.send_response(200)
+                    self.end_headers()
+                    self.wfile.write(b"ok")
+        srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Redirige)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        try:
+            base = f"http://127.0.0.1:{srv.server_address[1]}"
+            self.assertEqual(reseau.lire(base + "/ici", 100, 3.0), b"ok")
+            with self.assertRaises(reseau.ErreurReseau):
+                reseau.lire(base + "/ailleurs", 100, 3.0)
+        finally:
+            srv.shutdown()
+            srv.server_close()
+
+    def test_constat6_variables_de_test_ignorees_une_fois_fige(self):
+        from nvs_lanceur import config
+        os.environ["NVS_URL_BASE"] = "https://ailleurs.example/"
+        os.environ["NVS_CANAL"] = "pirate"
+        try:
+            sys.frozen = True
+            r = Reglages(cles_publiques={})
+            self.assertEqual(r.url_base, config.URL_BASE_DEFAUT)
+            self.assertEqual(r.canal, config.CANAL_DEFAUT)
+            self.assertIsNone(config.env_de_test("NVS_DOCUMENTS"))
+            with self.assertRaises(reseau.ErreurReseau):
+                reseau.lire("http://127.0.0.1:9/x", 10, 1.0)      # http local refusé une fois figé
+        finally:
+            del sys.frozen
+            del os.environ["NVS_URL_BASE"], os.environ["NVS_CANAL"]
 
 
 if __name__ == "__main__":

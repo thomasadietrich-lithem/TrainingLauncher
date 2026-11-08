@@ -25,7 +25,8 @@ FICHIER_CHOIX = "emplacement_donnees.json"
 
 def dossier_documents() -> str:
     """Dossier « Documents » réel de l'utilisateur (y compris redirigé vers OneDrive)."""
-    env = os.environ.get("NVS_DOCUMENTS")
+    from .config import env_de_test
+    env = env_de_test("NVS_DOCUMENTS")
     if env:
         return env
     if os.name == "nt":  # pragma: no cover - Windows
